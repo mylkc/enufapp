@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+body {
+  @apply bg-bg text-white font-sans;
+}
+
+.profile-photo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
