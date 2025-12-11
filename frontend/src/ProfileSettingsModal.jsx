@@ -1,6 +1,6 @@
 // frontend/src/components/ProfileSettingsModal.jsx
 import { useEffect, useState } from "react";
-import { MEDIA_SERVER_URL } from "../config";
+import { MEDIA_SERVER_URL } from "./config";
 
 function resolveUrl(url) {
   if (!url) return "";
@@ -10,21 +10,16 @@ function resolveUrl(url) {
 }
 
 export default function ProfileSettingsModal({ user, profile, onClose, onSaved }) {
-  const [fullName, setFullName] = useState("");
-  const [username, setUsername] = useState("");
   const [avatarFile, setAvatarFile] = useState(null);
+  const [fullName, setFullName] = useState(profile?.full_name || "");
+  const [username, setUsername] = useState(profile?.username || "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Load existing profile (or fallback to firebase)
   useEffect(() => {
-    if (profile) {
-      setFullName(profile.full_name || "");
-      setUsername(profile.username || "");
-    } else if (user) {
-      setFullName(user.displayName || "");
-    }
-  }, [profile, user]);
+    setFullName(profile?.full_name || "");
+    setUsername(profile?.username || "");
+  }, [profile?.full_name, profile?.username]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -36,8 +31,8 @@ export default function ProfileSettingsModal({ user, profile, onClose, onSaved }
       const fd = new FormData();
       fd.append("user_id", user.uid);
       fd.append("email", user.email || "");
-      fd.append("full_name", fullName || "");
-      fd.append("username", username.toLowerCase());
+      fd.append("full_name", fullName.trim());
+      fd.append("username", username.trim());
       if (avatarFile) {
         fd.append("avatar", avatarFile);
       }
@@ -58,7 +53,12 @@ export default function ProfileSettingsModal({ user, profile, onClose, onSaved }
       }
 
       const json = await res.json();
-      if (onSaved) onSaved(json.profile);
+      console.log("Profile saved successfully, calling onSaved with:", json.profile);
+      if (onSaved) {
+        console.log("onSaved callback exists, awaiting it");
+        await onSaved(json.profile);
+        console.log("onSaved callback completed");
+      }
     } catch (err) {
       console.error("Profile save error:", err);
       setError(err.message || "Profile save failed");
@@ -74,7 +74,7 @@ export default function ProfileSettingsModal({ user, profile, onClose, onSaved }
     : null;
 
   const initials =
-    (fullName || user?.email || "?")
+    (profile?.full_name || user?.email || "?")
       .split(" ")
       .filter(Boolean)
       .map((p) => p[0].toUpperCase())
@@ -112,21 +112,29 @@ export default function ProfileSettingsModal({ user, profile, onClose, onSaved }
             </label>
           </div>
 
-          <input
-            type="text"
-            placeholder="Full name"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs placeholder:text-zinc-500"
-          />
+          <div className="space-y-2">
+            <label className="block text-[11px] text-zinc-400">
+              Full name
+              <input
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="mt-1 w-full rounded-lg bg-zinc-800 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-white/30"
+                placeholder="Add your name"
+              />
+            </label>
 
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value.toLowerCase())}
-            className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-2 text-xs placeholder:text-zinc-500"
-          />
+            <label className="block text-[11px] text-zinc-400">
+              Username
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="mt-1 w-full rounded-lg bg-zinc-800 border border-white/10 px-3 py-2 text-sm focus:outline-none focus:border-white/30"
+                placeholder="Add a username"
+              />
+            </label>
+          </div>
 
           {error && <div className="text-[11px] text-red-400">{error}</div>}
 

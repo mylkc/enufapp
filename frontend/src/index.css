@@ -8,10 +8,65 @@ body {
   @apply bg-bg text-white font-sans;
 }
 
+.safe-area {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
 .profile-photo {
   width: 48px;
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+/* FIX CLICK BLOCKERS */
+.relative::before,
+.relative-group::before,
+.group::before {
+    pointer-events: none !important;
+}
+.relative::after,
+.group::after {
+    pointer-events: none !important;
+}
+
+/* Subtle interactive motion */
+button,
+.pressable {
+  transition: transform 140ms ease, opacity 160ms ease, box-shadow 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+button:active,
+.pressable:active {
+  transform: translateY(1px) scale(0.98);
+  opacity: 0.96;
+}
+
+button:focus-visible,
+.pressable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+a {
+  transition: color 140ms ease, opacity 140ms ease;
+}
+
+a:active {
+  opacity: 0.85;
+}
+
+input,
+textarea,
+select {
+  transition: box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
 }

@@ -9,6 +9,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
+const ADMIN_ALIAS = "enuf.";
+const ADMIN_EMAIL = "enuf.@enuf.local";
+const ADMIN_PASSWORD = "2271455792882";
+
 export default function Login({ user }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
@@ -26,20 +30,74 @@ export default function Login({ user }) {
     setError("");
   };
 
+  // Special-case admin login with alias-only credential
+  const signInAdmin = async () => {
+    try {
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        ADMIN_EMAIL,
+        ADMIN_PASSWORD
+      );
+      return cred.user;
+    } catch (err) {
+      if (err.code !== "auth/user-not-found") throw err;
+
+      // Create the admin user if it doesn't exist yet
+      const cred = await createUserWithEmailAndPassword(
+        auth,
+        ADMIN_EMAIL,
+        ADMIN_PASSWORD
+      );
+      await updateProfile(cred.user, { displayName: "ENUF Admin" });
+      await setDoc(
+        doc(db, "users", cred.user.uid),
+        {
+          uid: cred.user.uid,
+          email: ADMIN_ALIAS,
+          fullName: "ENUF Admin",
+          username: "enuf",
+          createdAt: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      await setDoc(doc(db, "usernames", "enuf"), {
+        uid: cred.user.uid,
+        email: ADMIN_ALIAS,
+      });
+      return cred.user;
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setBusy(true);
 
     try {
+      const cleanedEmail = email.trim();
+      const normalized = cleanedEmail.toLowerCase();
+      const isAdminAlias =
+        normalized === ADMIN_ALIAS ||
+        normalized === ADMIN_EMAIL.toLowerCase();
+
+      // Admin shortcut: login/create with alias "enuf." without hitting Firebase email validation on the alias
+      if (isAdminAlias) {
+        if (password !== ADMIN_PASSWORD) {
+          throw new Error("Wrong admin password.");
+        }
+        await signInAdmin();
+        resetForm();
+        return;
+      }
+
       if (mode === "login") {
-        await signInWithEmailAndPassword(auth, email.trim(), password);
+        await signInWithEmailAndPassword(auth, cleanedEmail, password);
         resetForm();
         return;
       }
 
       // SIGN UP FLOW
-      const cleanEmail = email.trim();
+      const cleanEmail = cleanedEmail;
       const cleanName = fullName.trim();
       const cleanUsername = username.trim().toLowerCase();
 
@@ -173,8 +231,9 @@ export default function Login({ user }) {
         )}
 
         <input
-          type="email"
-          placeholder="Email"
+          type="text"
+          inputMode="email"
+          placeholder="Email (use enuf. for admin)"
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
