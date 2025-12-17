@@ -9,6 +9,7 @@ import TopBar from "./components/TopBar";
 
 import Login from "./components/Login";
 import Watch from "./Watch";
+import Grow from "./Grow";
 import MoodSelector from "./MoodSelector";
 import FriendsTab from "./FriendsTab";
 import SettingsPage from "./SettingsPage";
@@ -79,8 +80,8 @@ export default function App() {
   // Loading state
   if (initializing) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center text-zinc-400 text-sm">
-        Loading ENUF…
+      <div className="min-h-screen bg-bg flex items-center justify-center text-muted text-sm">
+        Loading ENUF...
       </div>
     );
   }
@@ -88,7 +89,7 @@ export default function App() {
   // Not logged in
   if (!user) {
     return (
-      <div className="min-h-screen bg-bg text-white flex items-center justify-center">
+      <div className="min-h-screen bg-bg text-ink flex items-center justify-center">
         <Login user={null} />
       </div>
     );
@@ -97,7 +98,7 @@ export default function App() {
   // Mood check-in required first
   if (!hasCheckedIn) {
     return (
-      <div className="min-h-screen bg-bg text-white">
+      <div className="min-h-screen bg-bg text-ink">
         <MoodSelector onComplete={handleMoodComplete} onCancel={handleMoodCancel} />
       </div>
     );
@@ -105,10 +106,10 @@ export default function App() {
 
   // Main App
   return (
-    <div className="min-h-screen bg-bg text-white pb-16 safe-area">
+    <div className="min-h-screen bg-bg text-ink pb-16 safe-area">
      <button
   onClick={() => setActiveTab("mood")}
-  className={`fixed right-4 z-[1000] px-4 py-2 rounded-full bg-white text-black font-semibold shadow-lg
+  className={`fixed right-4 z-[1000] px-4 py-2 rounded-full bg-ink text-white font-semibold shadow-lg
     ${activeTab === "me" ? "top-20" : "top-4"}`}
 >
   + ENUF
@@ -122,6 +123,8 @@ export default function App() {
         )}
 
         {activeTab === "watch" && <Watch user={user} initialEmotion={watchFilter} />}
+
+        {activeTab === "grow" && <Grow user={user} />}
 
         {activeTab === "me" && (
           <MeTab
@@ -137,7 +140,7 @@ export default function App() {
       </main>
 
       {/* Bottom Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-black/90 border-t border-white/10 flex justify-around py-3 text-xs z-[999]">
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 border-t border-stroke backdrop-blur flex justify-around py-3 text-xs z-[999]">
         <TabButton
           label="Friends"
           icon="👫"
@@ -149,6 +152,13 @@ export default function App() {
           label="Watch"
           icon="🎥"
           tab="watch"
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+        />
+        <TabButton
+          label="Grow"
+          icon="G"
+          tab="grow"
           activeTab={activeTab}
           setActiveTab={setActiveTab}
         />
@@ -170,7 +180,7 @@ function TabButton({ label, icon, tab, activeTab, setActiveTab }) {
     <button
       onClick={() => setActiveTab(tab)}
       className={`flex flex-col items-center gap-0.5 ${
-        activeTab === tab ? "text-white font-semibold" : "text-zinc-400"
+        activeTab === tab ? "text-ink font-semibold" : "text-muted"
       }`}
     >
       <span>{icon}</span>

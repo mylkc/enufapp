@@ -224,17 +224,17 @@ app.get("/videos", (req, res) => {
   const { emotion, user_id } = req.query;
 
   let query =
-    "SELECT id, video_url, emotion_tag, caption, user_id, user_email, created_at FROM videos";
+    "SELECT v.id, v.video_url, v.emotion_tag, v.caption, v.user_id, v.user_email, v.created_at, u.username AS user_username, u.full_name AS user_full_name FROM videos v LEFT JOIN users u ON v.user_id = u.id";
   const where = [];
   const params = [];
 
   if (emotion) {
-    where.push("emotion_tag = ?");
+    where.push("v.emotion_tag = ?");
     params.push(emotion);
   }
 
   if (user_id) {
-    where.push("user_id = ?");
+    where.push("v.user_id = ?");
     params.push(user_id);
   }
 

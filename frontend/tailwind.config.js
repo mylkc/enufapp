@@ -4,11 +4,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#02040A",
-        card: "#050816"
+        bg: "#f6f2ec",
+        card: "#ffffff",
+        ink: "#1f1f1f",
+        muted: "#6f6a63",
+        stroke: "#e7dfd5",
+        accent: "#7f927c"
       },
       fontFamily: {
-        sans: ["system-ui", "ui-sans-serif", "Inter", "sans-serif"]
+        sans: ["Manrope", "system-ui", "ui-sans-serif", "sans-serif"]
       },
       borderRadius: {
         "2xl": "1rem",

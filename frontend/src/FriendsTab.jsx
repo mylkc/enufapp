@@ -135,7 +135,7 @@ export default function FriendsTab({ user }) {
   }
 
   return (
-    <div className="p-6 text-white space-y-6 pb-24">
+    <div className="p-6 text-ink space-y-6 pb-24">
       <h2 className="text-lg font-semibold mb-1">Friends</h2>
 
       {/* Search */}
@@ -144,36 +144,36 @@ export default function FriendsTab({ user }) {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm"
+            className="flex-1 bg-card border border-stroke rounded-xl px-3 py-2 text-sm"
             placeholder="Search by username..."
           />
           <button
             onClick={handleSearch}
-            className="px-4 py-2 rounded-xl bg-white text-black text-sm font-semibold"
+            className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-semibold"
           >
             Search
           </button>
         </div>
 
-        {error && <div className="text-red-400 text-xs">{error}</div>}
+        {error && <div className="text-red-600 text-xs">{error}</div>}
 
         {result && (
-          <div className="mt-2 p-3 bg-zinc-800 rounded-xl flex items-center justify-between">
+          <div className="mt-2 p-3 bg-card rounded-xl flex items-center justify-between">
             <div className="text-sm">
               <div className="font-semibold">@{result.username}</div>
-              <div className="text-xs text-zinc-400">Tap to view profile</div>
+              <div className="text-xs text-muted">Tap to view profile</div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => sendFriendRequest(result.uid)}
                 disabled={sending}
-                className="px-3 py-1.5 rounded-full bg-white/90 text-black text-xs font-semibold"
+                className="px-3 py-1.5 rounded-full bg-ink text-white text-xs font-semibold"
               >
                 {sending ? "Sending..." : "Add Friend"}
               </button>
               <button
                 onClick={() => setViewProfileId(result.uid)}
-                className="px-3 py-1.5 rounded-full bg-zinc-700 text-xs"
+                className="px-3 py-1.5 rounded-full bg-stroke text-xs"
               >
                 View
               </button>
@@ -185,16 +185,16 @@ export default function FriendsTab({ user }) {
       {/* Incoming requests */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">Incoming requests</h3>
-        {loading && <div className="text-xs text-zinc-500">Loading…</div>}
+        {loading && <div className="text-xs text-muted">Loading...</div>}
         {!loading && incoming.length === 0 && (
-          <div className="text-xs text-zinc-500">No incoming requests.</div>
+          <div className="text-xs text-muted">No incoming requests.</div>
         )}
         {!loading && incoming.length > 0 && (
           <div className="space-y-2">
             {incoming.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center justify-between bg-zinc-800 rounded-xl px-3 py-2"
+                className="flex items-center justify-between bg-card rounded-xl px-3 py-2"
               >
                 <div
                   className="flex items-center gap-2 cursor-pointer"
@@ -206,8 +206,8 @@ export default function FriendsTab({ user }) {
                       className="w-8 h-8 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[11px]">
-                      {(r.requester_full_name || r.requester_username || "?")
+                    <div className="w-8 h-8 rounded-full bg-stroke flex items-center justify-center text-[11px]">
+                      {(r.requester_full_name || r.requester_username || "...")
                         .slice(0, 2)
                         .toUpperCase()}
                     </div>
@@ -217,7 +217,7 @@ export default function FriendsTab({ user }) {
                       {r.requester_full_name || "No name"}
                     </div>
                     {r.requester_username && (
-                      <div className="text-[11px] text-zinc-400">
+                      <div className="text-[11px] text-muted">
                         @{r.requester_username}
                       </div>
                     )}
@@ -226,13 +226,13 @@ export default function FriendsTab({ user }) {
                 <div className="flex gap-1">
                   <button
                     onClick={() => respondToRequest(r.id, "accepted")}
-                    className="px-3 py-1 rounded-full bg-white text-black text-xs font-semibold"
+                    className="px-3 py-1 rounded-full bg-ink text-white text-xs font-semibold"
                   >
                     Accept
                   </button>
                   <button
                     onClick={() => respondToRequest(r.id, "rejected")}
-                    className="px-3 py-1 rounded-full bg-zinc-700 text-xs"
+                    className="px-3 py-1 rounded-full bg-stroke text-xs"
                   >
                     Decline
                   </button>
@@ -246,9 +246,9 @@ export default function FriendsTab({ user }) {
       {/* Friends list */}
       <div className="space-y-2">
         <h3 className="text-sm font-semibold">My friends</h3>
-        {loading && <div className="text-xs text-zinc-500">Loading…</div>}
+        {loading && <div className="text-xs text-muted">Loading...</div>}
         {!loading && friends.length === 0 && (
-          <div className="text-xs text-zinc-500">
+          <div className="text-xs text-muted">
             You haven&apos;t added any friends yet.
           </div>
         )}
@@ -262,7 +262,7 @@ export default function FriendsTab({ user }) {
                     f.friend_id || f.requester_id || f.receiver_id || null
                   )
                 }
-                className="w-full bg-zinc-800 rounded-xl px-3 py-2 flex items-center gap-2 text-left hover:bg-zinc-700"
+                className="w-full bg-card rounded-xl px-3 py-2 flex items-center gap-2 text-left hover:bg-stroke"
               >
                 {f.friend_profile_pic_url ? (
                   <img
@@ -270,8 +270,8 @@ export default function FriendsTab({ user }) {
                     className="w-8 h-8 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[11px]">
-                    {(f.friend_full_name || f.friend_username || "?")
+                  <div className="w-8 h-8 rounded-full bg-stroke flex items-center justify-center text-[11px]">
+                    {(f.friend_full_name || f.friend_username || "...")
                       .slice(0, 2)
                       .toUpperCase()}
                   </div>
@@ -281,7 +281,7 @@ export default function FriendsTab({ user }) {
                     {f.friend_full_name || "No name"}
                   </div>
                   {f.friend_username && (
-                    <div className="text-[11px] text-zinc-400">
+                    <div className="text-[11px] text-muted">
                       @{f.friend_username}
                     </div>
                   )}

@@ -27,6 +27,7 @@ export default function Watch({ user, initialEmotion }) {
   const [filterEmotion, setFilterEmotion] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [muted, setMuted] = useState(false);
   const playerRef = useRef(null);
   const vib = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -103,23 +104,21 @@ export default function Watch({ user, initialEmotion }) {
 
   const hasVideos = videos.length > 0;
   const current = hasVideos ? videos[currentIndex] : null;
+  const toggleMuted = () => setMuted((m) => !m);
 
   return (
     <div className="space-y-6">
       <div className="space-y-1">
         <div className="text-2xl font-semibold">Watch</div>
-        <p className="text-xs text-zinc-500 max-w-md">
-          Tap a filter, then swipe/scroll through matching stories.
-        </p>
       </div>
 
-      <div className="rounded-2xl bg-card/60 border border-white/10 p-3 space-y-2 sticky top-2 z-20 backdrop-blur">
+      <div className="rounded-2xl bg-card border border-stroke p-3 space-y-2 sticky top-2 z-20 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-zinc-400 uppercase tracking-wide">Filter</span>
+          <span className="text-[11px] text-muted uppercase tracking-wide">Filter</span>
           {filterEmotion && (
             <button
               onClick={() => setFilterEmotion("")}
-              className="text-[11px] text-zinc-300 underline underline-offset-4"
+              className="text-[11px] text-muted underline underline-offset-4"
             >
               Clear
             </button>
@@ -130,8 +129,8 @@ export default function Watch({ user, initialEmotion }) {
             onClick={() => setFilterEmotion("")}
             className={`px-3 py-1.5 rounded-full border whitespace-nowrap ${
               !filterEmotion
-                ? "bg-white text-black border-white"
-                : "border-zinc-700 bg-zinc-900/70 text-zinc-200"
+                ? "bg-ink text-white border-ink"
+                : "border-stroke bg-white text-muted hover:border-ink/30"
             }`}
           >
             All
@@ -142,8 +141,8 @@ export default function Watch({ user, initialEmotion }) {
               onClick={() => setFilterEmotion(e)}
               className={`px-3 py-1.5 rounded-full border whitespace-nowrap ${
                 filterEmotion === e
-                  ? "bg-white text-black border-white"
-                  : "border-zinc-700 bg-zinc-900/70 text-zinc-200"
+                  ? "bg-ink text-white border-ink"
+                  : "border-stroke bg-white text-muted hover:border-ink/30"
               }`}
             >
               {niceLabel(e)}
@@ -155,41 +154,45 @@ export default function Watch({ user, initialEmotion }) {
       <div className="flex flex-col items-center gap-4">
         <div
           ref={playerRef}
-          className="w-full max-w-sm aspect-[9/16] rounded-3xl bg-card border border-white/10 overflow-hidden flex items-center justify-center shadow-[0_18px_60px_rgba(0,0,0,0.7)]"
+          className="w-full max-w-sm aspect-[9/16] rounded-3xl bg-card border border-stroke overflow-hidden flex items-center justify-center shadow-[0_18px_50px_rgba(24,24,24,0.18)]"
         >
           {loading ? (
-            <div className="text-zinc-500 text-sm">Loading…</div>
+            <div className="text-muted text-sm">Loading...</div>
           ) : hasVideos ? (
             <video
               key={current.id}
               src={current.video_url}
               className="w-full h-full object-cover"
-              controls
+              autoPlay
+              muted={muted}
               playsInline
-              controlsList="nodownload noremoteplayback"
+              onClick={toggleMuted}
+              onPointerDown={(e) => e.currentTarget.pause()}
+              onPointerUp={(e) => e.currentTarget.play()}
+              onPointerLeave={(e) => e.currentTarget.play()}
+              onPointerCancel={(e) => e.currentTarget.play()}
             />
           ) : (
-            <div className="text-zinc-500 text-sm text-center px-6">
+            <div className="text-muted text-sm text-center px-6">
               No videos yet. Be the first to share something real.
             </div>
           )}
         </div>
 
-        {error && <div className="text-[11px] text-red-400">{error}</div>}
+        {error && <div className="text-[11px] text-red-600">{error}</div>}
 
         {hasVideos && (
           <div className="w-full max-w-sm space-y-1">
-            <div className="text-[11px] text-zinc-400 uppercase tracking-wide">
+            <div className="text-[11px] text-muted uppercase tracking-wide">
               {niceLabel(current.emotion_tag)}
             </div>
             <div className="text-sm font-medium">
               {current.caption || "Untitled story"}
             </div>
-            <div className="text-[11px] text-zinc-500">
-              Posted by {current.user_email || "Anonymous"}
+            <div className="text-[11px] text-muted">
+              Posted by {current.user_username || "member"}
             </div>
-            <div className="flex items-center gap-3 pt-1 text-[11px] text-zinc-400">
-              <span>Scroll / swipe to move</span>
+            <div className="flex items-center gap-3 pt-1 text-[11px] text-muted">
               <span className="ml-auto">
                 {currentIndex + 1} / {videos.length}
               </span>

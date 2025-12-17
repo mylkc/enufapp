@@ -57,7 +57,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
   }, [videos.length, onClose]);
 
   return (
-    <div className="fixed inset-0 bg-black/85 z-[999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/60 z-[999] flex items-center justify-center p-4">
       <div className="relative w-full max-w-4xl h-full">
         <div
           ref={listRef}
@@ -69,7 +69,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
               ref={(node) => {
                 if (node) containerRef.set(i, node);
               }}
-              className={`rounded-xl border border-white/10 bg-black/30 p-2 ${
+              className={`rounded-xl border border-stroke bg-white p-2 ${
                 i === index ? "shadow-[0_0_0_2px_rgba(255,255,255,0.15)]" : ""
               }`}
             >
@@ -82,7 +82,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
                 className="w-full max-h-[70vh] rounded-lg"
               />
               {v.emotion_tag && (
-                <div className="text-[11px] text-zinc-300 mt-1">
+                <div className="text-[11px] text-muted mt-1">
                   {v.emotion_tag}
                 </div>
               )}
@@ -92,7 +92,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
 
         <button
           onClick={onClose}
-          className="absolute -top-10 right-0 text-white text-3xl bg-black/70 px-4 py-2 rounded-full"
+          className="absolute -top-10 right-0 text-ink text-3xl bg-ink/70 px-4 py-2 rounded-full"
         >
           
         </button>
@@ -244,7 +244,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
       return (
         <button
           onClick={removeFriend}
-          className="px-4 py-1.5 rounded-full bg-zinc-700 text-xs"
+          className="px-4 py-1.5 rounded-full bg-stroke text-xs"
         >
           Remove friend
         </button>
@@ -254,7 +254,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
     if (friendStatus === "pending") {
       if (friendDirection === "outgoing") {
         return (
-          <button className="px-4 py-1.5 rounded-full bg-zinc-700 text-xs">
+          <button className="px-4 py-1.5 rounded-full bg-stroke text-xs">
             Request sent
           </button>
         );
@@ -263,7 +263,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
         return (
           <button
             onClick={acceptIncoming}
-            className="px-4 py-1.5 rounded-full bg-white text-black text-xs font-semibold"
+            className="px-4 py-1.5 rounded-full bg-ink text-white text-xs font-semibold"
           >
             Accept friend request
           </button>
@@ -275,7 +275,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
     return (
       <button
         onClick={sendFriendRequest}
-        className="px-4 py-1.5 rounded-full bg-white text-black text-xs font-semibold"
+        className="px-4 py-1.5 rounded-full bg-ink text-white text-xs font-semibold"
       >
         Add Friend
       </button>
@@ -287,7 +287,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
       <div className="p-4 flex items-center gap-2">
         <button
           onClick={onBack}
-          className="px-3 py-1.5 rounded-full bg-zinc-800 text-xs"
+          className="px-3 py-1.5 rounded-full bg-card text-xs"
         >
            Back
         </button>
@@ -295,11 +295,11 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
       </div>
 
       {loading && (
-        <div className="px-4 text-xs text-zinc-400">Loading profile</div>
+        <div className="px-4 text-xs text-muted">Loading profile</div>
       )}
 
       {error && (
-        <div className="px-4 text-xs text-red-400 mb-2">{error}</div>
+        <div className="px-4 text-xs text-red-600 mb-2">{error}</div>
       )}
 
       {!loading && (
@@ -309,11 +309,11 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
             {profile?.profile_pic_url ? (
               <img
                 src={profile.profile_pic_url}
-                className="w-14 h-14 rounded-full object-cover border border-white/10"
+                className="w-14 h-14 rounded-full object-cover border border-stroke"
               />
             ) : (
-              <div className="w-14 h-14 rounded-full bg-zinc-700 flex items-center justify-center text-sm font-semibold border border-white/10">
-                {(profile?.full_name || profile?.username || "?")
+              <div className="w-14 h-14 rounded-full bg-stroke flex items-center justify-center text-sm font-semibold border border-stroke">
+                {(profile?.full_name || profile?.username || "...")
                   .slice(0, 2)
                   .toUpperCase()}
               </div>
@@ -324,12 +324,12 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
                 {profile?.full_name || "No name yet"}
               </div>
               {profile?.username && (
-                <div className="text-xs text-zinc-400">
+                <div className="text-xs text-muted">
                   @{profile.username}
                 </div>
               )}
               {profile?.bio && (
-                <div className="text-xs text-zinc-300 mt-1 whitespace-pre-line">
+                <div className="text-xs text-muted mt-1 whitespace-pre-line">
                   {profile.bio}
                 </div>
               )}
@@ -345,8 +345,8 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
                 onClick={() => setEmotionFilter("all")}
                 className={`px-3 py-1 rounded-full border ${
                   emotionFilter === "all"
-                    ? "bg-white text-black border-white"
-                    : "border-white/20 bg-zinc-800"
+                    ? "bg-ink text-white border-ink"
+                    : "border-stroke bg-card"
                 }`}
               >
                 All
@@ -357,8 +357,8 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
                   onClick={() => setEmotionFilter(e)}
                   className={`px-3 py-1 rounded-full border ${
                     emotionFilter === e
-                      ? "bg-white text-black border-white"
-                      : "border-white/20 bg-zinc-800"
+                      ? "bg-ink text-white border-ink"
+                      : "border-stroke bg-card"
                   }`}
                 >
                   {e}
@@ -370,7 +370,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
           {/* Grid of videos */}
           <div className="px-4">
             {filteredVideos.length === 0 ? (
-              <div className="text-xs text-zinc-500">
+              <div className="text-xs text-muted">
                 No videos yet for this filter.
               </div>
             ) : (
@@ -379,7 +379,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
                   <button
                     key={v.id}
                     onClick={() => setSelectedIndex(idx)}
-                    className="relative text-left rounded-xl overflow-hidden border border-white/10 group"
+                    className="relative text-left rounded-xl overflow-hidden border border-stroke group"
                   >
                     <video
                       src={resolveUrl(v.video_url)}
@@ -389,7 +389,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
                       muted
                     />
                     {v.emotion_tag && (
-                      <div className="absolute bottom-1 left-1 right-1 text-[9px] px-1 py-0.5 rounded-full bg-black/60 text-white text-center line-clamp-1">
+                      <div className="absolute bottom-1 left-1 right-1 text-[9px] px-1 py-0.5 rounded-full bg-ink/60 text-white text-center line-clamp-1">
                         {v.emotion_tag}
                       </div>
                     )}

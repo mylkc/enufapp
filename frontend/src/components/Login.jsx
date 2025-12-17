@@ -152,29 +152,29 @@ export default function Login({ user }) {
   // Logged-in view
   if (user) {
     return (
-      <div className="flex items-center gap-3 text-xs bg-zinc-900/60 border border-white/10 rounded-2xl px-3 py-2">
+      <div className="flex items-center gap-3 text-xs bg-card border border-stroke rounded-2xl px-3 py-2">
         <div className="flex items-center gap-2">
           {user.photoURL ? (
             <img
               src={user.photoURL}
               alt="Profile"
-              className="w-8 h-8 rounded-full object-cover border border-white/10"
+              className="w-8 h-8 rounded-full object-cover border border-stroke"
             />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-[11px] text-white">
-              {user.displayName ? user.displayName[0].toUpperCase() : "?"}
+            <div className="w-8 h-8 rounded-full bg-stroke flex items-center justify-center text-[11px] text-ink">
+              {user.displayName ? user.displayName[0].toUpperCase() : "..."}
             </div>
           )}
           <div className="flex flex-col">
-            <span className="text-[10px] text-zinc-400">Signed in as</span>
-            <span className="font-medium text-zinc-50 max-w-[140px] truncate">
+            <span className="text-[10px] text-muted">Signed in as</span>
+            <span className="font-medium text-ink max-w-[140px] truncate">
               {user.displayName || user.email}
             </span>
           </div>
         </div>
         <button
           onClick={() => signOut(auth)}
-          className="px-3 py-1.5 rounded-full bg-white text-black font-medium"
+          className="px-3 py-1.5 rounded-full bg-ink text-white font-medium"
         >
           Log out
         </button>
@@ -184,13 +184,13 @@ export default function Login({ user }) {
 
   // Auth form
   return (
-    <div className="bg-zinc-900/70 border border-white/10 rounded-2xl px-3 py-2 text-xs space-y-2 w-[230px]">
+    <div className="bg-card border border-stroke rounded-2xl px-3 py-2 text-xs space-y-2 w-[230px]">
       <div className="flex gap-1 mb-1">
         <button
           className={`flex-1 px-2 py-1 rounded-full ${
             mode === "login"
-              ? "bg-white text-black font-semibold"
-              : "bg-zinc-800 text-zinc-300"
+              ? "bg-ink text-white font-semibold"
+              : "bg-white border border-stroke text-muted"
           }`}
           onClick={() => setMode("login")}
         >
@@ -199,8 +199,8 @@ export default function Login({ user }) {
         <button
           className={`flex-1 px-2 py-1 rounded-full ${
             mode === "signup"
-              ? "bg-white text-black font-semibold"
-              : "bg-zinc-800 text-zinc-300"
+              ? "bg-ink text-white font-semibold"
+              : "bg-white border border-stroke text-muted"
           }`}
           onClick={() => setMode("signup")}
         >
@@ -216,7 +216,7 @@ export default function Login({ user }) {
               placeholder="Full name"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-zinc-500"
+              className="w-full bg-white border border-stroke rounded-xl px-3 py-1.5 text-[11px] placeholder:text-muted"
               required
             />
             <input
@@ -224,7 +224,7 @@ export default function Login({ user }) {
               placeholder="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
-              className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-zinc-500"
+              className="w-full bg-white border border-stroke rounded-xl px-3 py-1.5 text-[11px] placeholder:text-muted"
               required
             />
           </>
@@ -237,7 +237,7 @@ export default function Login({ user }) {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-zinc-500"
+          className="w-full bg-white border border-stroke rounded-xl px-3 py-1.5 text-[11px] placeholder:text-muted"
           required
         />
         <input
@@ -246,17 +246,17 @@ export default function Login({ user }) {
           autoComplete={mode === "login" ? "current-password" : "new-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-3 py-1.5 text-[11px] placeholder:text-zinc-500"
+          className="w-full bg-white border border-stroke rounded-xl px-3 py-1.5 text-[11px] placeholder:text-muted"
           required
         />
-        {error && <div className="text-[10px] text-red-400">{error}</div>}
+        {error && <div className="text-[10px] text-red-600">{error}</div>}
         <button
           type="submit"
           disabled={busy}
-          className="w-full mt-1 rounded-full bg-white text-black py-1.5 text-[11px] font-semibold disabled:opacity-60"
+          className="w-full mt-1 rounded-full bg-ink text-white py-1.5 text-[11px] font-semibold disabled:opacity-60"
         >
           {busy
-            ? "Please wait…"
+            ? "Please wait..."
             : mode === "login"
             ? "Log in"
             : "Create account"}

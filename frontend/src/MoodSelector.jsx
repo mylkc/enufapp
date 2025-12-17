@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-const CORE_MOODS = [
+export const CORE_MOODS = [
   {
     id: "good",
     label: "Good",
@@ -269,21 +269,21 @@ export default function MoodSelector({ onComplete, onCancel }) {
     <section className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] tracking-[0.28em] uppercase text-zinc-500">
+          <div className="text-[11px] tracking-[0.28em] uppercase text-muted">
             Mood
           </div>
           <h1 className="text-2xl sm:text-3xl font-semibold mt-1">
-            How are you really feeling right now?
+            How are you really feeling right now...
           </h1>
-          <p className="text-xs text-zinc-500 mt-2 max-w-xl">
-            Tap a mood to open the flow. We’ll guide you through in two clean steps.
+          <p className="text-xs text-muted mt-2 max-w-xl">
+            Tap a mood to open the flow. We'll guide you through in two clean steps.
           </p>
         </div>
         {onCancel && (
           <button
             type="button"
             onClick={onCancel}
-            className="text-zinc-400 hover:text-white text-lg px-2"
+            className="text-muted hover:text-ink text-lg px-2"
             aria-label="Close mood selector"
           >
             ×
@@ -292,29 +292,29 @@ export default function MoodSelector({ onComplete, onCancel }) {
       </div>
 
       {/* Immersive card */}
-      <div className="rounded-3xl bg-gradient-to-b from-white/10 to-white/5 border border-white/15 p-0 overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.55)]">
+      <div className="rounded-3xl bg-white/85 border border-stroke p-0 overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.55)]">
         {/* Stage indicator */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-white/10 bg-white/5 backdrop-blur">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-stroke bg-white backdrop-blur">
           <div className="flex items-center gap-3">
             {stage !== "core" && (
               <button
                 type="button"
                 onClick={goBack}
-                className="flex items-center gap-1 rounded-full bg-white/10 border border-white/20 px-3 py-1 text-[11px] text-white hover:bg-white/20"
+                className="flex items-center gap-1 rounded-full bg-white border border-stroke px-3 py-1 text-[11px] text-ink hover:bg-white"
               >
                 ← Back
               </button>
             )}
-            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-zinc-300">
-              <span className={stage === "core" ? "text-white" : ""}>Choose Mood</span>
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-muted">
+              <span className={stage === "core" ? "text-ink" : ""}>Choose Mood</span>
               <span>•</span>
-              <span className={stage === "sub" ? "text-white" : ""}>Narrow</span>
+              <span className={stage === "sub" ? "text-ink" : ""}>Narrow</span>
               <span>•</span>
-              <span className={stage === "reason" ? "text-white" : ""}>Reasons</span>
+              <span className={stage === "reason" ? "text-ink" : ""}>Reasons</span>
             </div>
           </div>
           {coreMood && (
-            <div className="text-[11px] text-zinc-200">
+            <div className="text-[11px] text-ink">
               {coreMood.label}
               {subMood ? ` • ${subMood}` : ""}
             </div>
@@ -334,15 +334,15 @@ export default function MoodSelector({ onComplete, onCancel }) {
                     onClick={() => handleCoreSelect(m.id)}
                     className={`flex flex-col items-start gap-2 rounded-2xl border px-4 py-4 text-left transition ${
                       active
-                        ? "border-white bg-white text-black shadow-lg shadow-white/10"
-                        : "border-white/10 bg-white/5 text-zinc-200 hover:border-white/20"
+                        ? "border-ink bg-ink text-white shadow-lg shadow-black/10"
+                        : "border-stroke bg-white text-ink hover:border-ink/30"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className="text-2xl leading-none">{m.icon}</span>
                       <div className="text-base font-semibold">{m.label}</div>
                     </div>
-                    <div className="text-[11px] text-zinc-400">
+                    <div className="text-[11px] text-muted">
                       {m.subMoods.slice(0, 3).join(", ")}...
                     </div>
                   </button>
@@ -353,7 +353,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
 
           {stage === "sub" && coreMood && (
             <div className="space-y-4">
-              <div className="text-sm font-semibold text-white">
+              <div className="text-sm font-semibold text-ink">
                 Narrow it down
               </div>
               <div className="flex flex-wrap gap-2">
@@ -370,8 +370,8 @@ export default function MoodSelector({ onComplete, onCancel }) {
                       }}
                       className={`px-3 py-1.5 rounded-full text-sm border transition ${
                         active
-                          ? "bg-white text-black border-white"
-                          : "bg-white/5 border-white/15 text-zinc-200 hover:border-white/30"
+                          ? "bg-ink text-white border-ink"
+                          : "bg-white border-stroke text-ink hover:border-stroke"
                       }`}
                     >
                       {m}
@@ -383,7 +383,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
                 <button
                   type="button"
                   onClick={() => handleConfirm(true)}
-                  className="px-3 py-1.5 rounded-full bg-white text-black text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-full bg-ink text-white text-xs font-semibold"
                 >
                   Quick log this mood
                 </button>
@@ -393,7 +393,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
                     setShowReasons(true);
                     setStage("reason");
                   }}
-                  className="text-[11px] text-zinc-300 underline decoration-dotted"
+                  className="text-[11px] text-muted underline decoration-dotted"
                 >
                   Skip to reasons
                 </button>
@@ -404,7 +404,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
           {stage === "reason" && coreMood && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-ink">
                   Add a reason (optional)
                 </div>
               </div>
@@ -419,8 +419,8 @@ export default function MoodSelector({ onComplete, onCancel }) {
                       onClick={() => toggleReason(reason)}
                       className={`px-3 py-1.5 rounded-full text-xs border transition ${
                         active
-                          ? "bg-white text-black border-white"
-                          : "bg-white/5 border-white/15 text-zinc-200 hover:border-white/30"
+                          ? "bg-ink text-white border-ink"
+                          : "bg-white border-stroke text-ink hover:border-stroke"
                       }`}
                     >
                       {reason}
@@ -432,7 +432,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
               <div className="space-y-3">
                 {UNIVERSAL_REASONS.map((group) => (
                   <div key={group.category} className="space-y-2">
-                    <div className="text-[11px] uppercase tracking-[0.15em] text-zinc-400">
+                    <div className="text-[11px] uppercase tracking-[0.15em] text-muted">
                       {group.category}
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -445,8 +445,8 @@ export default function MoodSelector({ onComplete, onCancel }) {
                             onClick={() => toggleReason(item)}
                             className={`px-3 py-1.5 rounded-full text-xs border transition ${
                               active
-                                ? "bg-white text-black border-white"
-                                : "bg-white/5 border-white/15 text-zinc-200 hover:border-white/30"
+                                ? "bg-ink text-white border-ink"
+                                : "bg-white border-stroke text-ink hover:border-stroke"
                             }`}
                           >
                             {item}
@@ -461,16 +461,16 @@ export default function MoodSelector({ onComplete, onCancel }) {
           )}
 
           {/* Footer actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 border-t border-white/5">
-            <div className="text-xs text-zinc-300 min-h-[32px]">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1 border-t border-stroke/60">
+            <div className="text-xs text-muted min-h-[32px]">
               {coreMood ? (
                 <>
-                  <span className="font-medium text-white">
+                  <span className="font-medium text-ink">
                     {coreMood.label}
                     {subMood ? ` • ${subMood}` : ""}
                   </span>
                   {selectedReasons.length > 0 && (
-                    <span className="text-zinc-300">
+                    <span className="text-muted">
                       {" "}
                       | {selectedReasons.join(", ")}
                     </span>
@@ -487,8 +487,8 @@ export default function MoodSelector({ onComplete, onCancel }) {
                 onClick={() => handleConfirm(true)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold ${
                   coreMood
-                    ? "bg-white text-black hover:bg-zinc-100"
-                    : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    ? "bg-ink text-white hover:bg-ink/90"
+                    : "bg-stroke text-muted cursor-not-allowed"
                 }`}
               >
                 Quick log
@@ -499,8 +499,8 @@ export default function MoodSelector({ onComplete, onCancel }) {
                 onClick={() => handleConfirm(false)}
                 className={`px-4 py-2 rounded-full text-xs font-semibold ${
                   coreMood
-                    ? "bg-white/10 text-white border border-white/30 hover:bg-white/20"
-                    : "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    ? "bg-white text-ink border border-stroke hover:bg-white"
+                    : "bg-stroke text-muted cursor-not-allowed"
                 }`}
               >
                 Log with details

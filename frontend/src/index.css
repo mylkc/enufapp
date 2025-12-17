@@ -1,11 +1,57 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: dark; }
+:root { color-scheme: light; }
 
-body {
-  @apply bg-bg text-white font-sans;
+@layer base {
+  :root {
+    --bg: #f6f2ec;
+    --card: #ffffff;
+    --ink: #1f1f1f;
+    --muted: #6f6a63;
+    --stroke: #e7dfd5;
+    --glow-a: #fff8ef;
+    --glow-b: #f0f6f1;
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #0f1115;
+    --card: #171922;
+    --ink: #f6f4ee;
+    --muted: #b2aca5;
+    --stroke: #2a2f3a;
+    --glow-a: #1a1d26;
+    --glow-b: #12141c;
+  }
+
+  body {
+    @apply bg-bg font-sans;
+    color: var(--ink);
+    background-image: radial-gradient(1200px 600px at 20% -10%, var(--glow-a) 0%, transparent 60%),
+      radial-gradient(900px 600px at 90% 0%, var(--glow-b) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .bg-bg {
+    background-color: var(--bg);
+  }
+  .bg-card {
+    background-color: var(--card);
+  }
+  .text-ink {
+    color: var(--ink);
+  }
+  .text-muted {
+    color: var(--muted);
+  }
+  .border-stroke {
+    border-color: var(--stroke);
+  }
 }
 
 .safe-area {
@@ -19,7 +65,7 @@ body {
   height: 48px;
   border-radius: 50%;
   object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(31, 31, 31, 0.12);
 }
 /* FIX CLICK BLOCKERS */
 .relative::before,
@@ -47,7 +93,7 @@ button:active,
 button:focus-visible,
 .pressable:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 2px rgba(31, 31, 31, 0.18);
 }
 
 a {
@@ -68,5 +114,5 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(31, 31, 31, 0.12);
 }
