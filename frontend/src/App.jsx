@@ -137,7 +137,7 @@ export default function App() {
     if (!initializing) return;
     const timeout = setTimeout(() => {
       setInitializing(false);
-    }, 3000);
+    }, 800);
     return () => clearTimeout(timeout);
   }, [initializing]);
 

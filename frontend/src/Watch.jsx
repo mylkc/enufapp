@@ -39,6 +39,7 @@ export default function Watch({ user, initialEmotion }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
   const touchStartRef = useRef(null);
+  const videoRefs = useRef(new Map());
   const playerRef = useRef(null);
   const vib = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -210,6 +211,24 @@ export default function Watch({ user, initialEmotion }) {
     return () => clearTimeout(timer);
   }, [isTransitioning]);
 
+  useEffect(() => {
+    const map = videoRefs.current;
+    map.forEach((el, id) => {
+      if (!el) return;
+      if (id === current?.id) {
+        const playPromise = el.play?.();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(() => {});
+        }
+      } else {
+        el.pause?.();
+        try {
+          el.currentTime = 0;
+        } catch {}
+      }
+    });
+  }, [current?.id]);
+
   const hasVideos = videos.length > 0;
   const current = hasVideos ? videos[currentIndex] : null;
   const toggleMuted = () => setMuted((m) => !m);
@@ -326,6 +345,13 @@ export default function Watch({ user, initialEmotion }) {
                     autoPlay={video.id === current.id}
                     muted={muted}
                     playsInline
+                    ref={(node) => {
+                      if (node) {
+                        videoRefs.current.set(video.id, node);
+                      } else {
+                        videoRefs.current.delete(video.id);
+                      }
+                    }}
                     onClick={toggleMuted}
                     onPointerDown={(e) => e.currentTarget.pause()}
                     onPointerUp={(e) => e.currentTarget.play()}

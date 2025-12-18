@@ -8,6 +8,8 @@ import {
   updateProfile,
   setPersistence,
   inMemoryPersistence,
+  browserLocalPersistence,
+  indexedDBLocalPersistence,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -159,13 +161,31 @@ export default function Login({ user, onAuthSuccess }) {
         setBusy(false);
       }, 20000);
       try {
-        await withTimeout(
-          setPersistence(auth, inMemoryPersistence),
-          "Set auth persistence",
-          8000
-        );
+        try {
+          await withTimeout(
+            setPersistence(auth, browserLocalPersistence),
+            "Set auth persistence (local)",
+            8000
+          );
+        } catch (err) {
+          console.warn("Local persistence failed, trying IndexedDB:", err);
+          await withTimeout(
+            setPersistence(auth, indexedDBLocalPersistence),
+            "Set auth persistence (indexeddb)",
+            8000
+          );
+        }
       } catch (err) {
-        console.warn("Failed to set in-memory persistence:", err);
+        console.warn("Persistence setup failed, falling back to memory:", err);
+        try {
+          await withTimeout(
+            setPersistence(auth, inMemoryPersistence),
+            "Set auth persistence (memory)",
+            8000
+          );
+        } catch (innerErr) {
+          console.warn("In-memory persistence failed:", innerErr);
+        }
       }
       const cleanedEmail = email.trim();
       const normalized = cleanedEmail.toLowerCase();
