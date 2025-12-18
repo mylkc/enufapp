@@ -6,6 +6,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
+  setPersistence,
+  inMemoryPersistence,
 } from "firebase/auth";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
@@ -108,6 +110,11 @@ export default function Login({ user, onAuthSuccess }) {
     setBusy(true);
 
     try {
+      try {
+        await setPersistence(auth, inMemoryPersistence);
+      } catch (err) {
+        console.warn("Failed to set in-memory persistence:", err);
+      }
       const cleanedEmail = email.trim();
       const normalized = cleanedEmail.toLowerCase();
       const isAdminAlias =
