@@ -108,10 +108,19 @@ export default function Login({ user, onAuthSuccess }) {
     e.preventDefault();
     setError("");
     setBusy(true);
+    let hardTimeoutId;
 
     try {
+      hardTimeoutId = setTimeout(() => {
+        setError("Login is taking too long. Please try again.");
+        setBusy(false);
+      }, 20000);
       try {
-        await setPersistence(auth, inMemoryPersistence);
+        await withTimeout(
+          setPersistence(auth, inMemoryPersistence),
+          "Set auth persistence",
+          8000
+        );
       } catch (err) {
         console.warn("Failed to set in-memory persistence:", err);
       }
@@ -207,6 +216,7 @@ export default function Login({ user, onAuthSuccess }) {
           : err.message || "Auth failed";
       setError(msg);
     } finally {
+      if (hardTimeoutId) clearTimeout(hardTimeoutId);
       setBusy(false);
     }
   };
