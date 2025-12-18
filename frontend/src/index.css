@@ -6,6 +6,19 @@
 
 :root { color-scheme: light; }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 @layer base {
   :root {
     --bg: #f6f2ec;
