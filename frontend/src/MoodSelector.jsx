@@ -211,6 +211,7 @@ export default function MoodSelector({ onComplete, onCancel }) {
   const [selectedReasons, setSelectedReasons] = useState([]);
   const [showReasons, setShowReasons] = useState(false);
   const [stage, setStage] = useState("core"); // core -> sub -> reasons
+  const [openReasonCategory, setOpenReasonCategory] = useState(null);
   const goBack = () => {
     if (stage === "reason") {
       setStage("sub");
@@ -421,32 +422,44 @@ export default function MoodSelector({ onComplete, onCancel }) {
               </div>
 
               <div className="space-y-3">
-                {UNIVERSAL_REASONS.map((group) => (
-                  <div key={group.category} className="space-y-2">
-                    <div className="text-[11px] uppercase tracking-[0.15em] text-muted">
-                      {group.category}
+                {UNIVERSAL_REASONS.map((group) => {
+                  const isOpen = openReasonCategory === group.category;
+                  return (
+                    <div key={group.category} className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenReasonCategory(isOpen ? null : group.category)
+                        }
+                        className="w-full flex items-center justify-between text-[11px] uppercase tracking-[0.15em] text-muted border border-stroke rounded-full px-3 py-2"
+                      >
+                        <span>{group.category}</span>
+                        <span>{isOpen ? "—" : "+"}</span>
+                      </button>
+                      {isOpen && (
+                        <div className="flex flex-wrap gap-2">
+                          {group.items.map((item) => {
+                            const active = selectedReasons.includes(item);
+                            return (
+                              <button
+                                key={item}
+                                type="button"
+                                onClick={() => toggleReason(item)}
+                                className={`px-3 py-1.5 rounded-full text-xs border transition ${
+                                  active
+                                    ? "bg-ink text-white border-ink"
+                                    : "bg-white border-stroke text-ink hover:border-stroke"
+                                }`}
+                              >
+                                {item}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {group.items.map((item) => {
-                        const active = selectedReasons.includes(item);
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => toggleReason(item)}
-                            className={`px-3 py-1.5 rounded-full text-xs border transition ${
-                              active
-                                ? "bg-ink text-white border-ink"
-                                : "bg-white border-stroke text-ink hover:border-stroke"
-                            }`}
-                          >
-                            {item}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
