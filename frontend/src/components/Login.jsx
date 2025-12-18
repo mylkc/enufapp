@@ -25,7 +25,22 @@ const withTimeout = (promise, label, ms = 15000) =>
     ),
   ]);
 
-export default function Login({ user }) {
+async function setAuthPreference(user) {
+  try {
+    const { Preferences } = await import("@capacitor/preferences");
+    const value = JSON.stringify({
+      uid: user?.uid || "",
+      email: user?.email || "",
+      displayName: user?.displayName || "",
+      photoURL: user?.photoURL || "",
+    });
+    await Preferences.set({ key: "enuf.auth", value });
+  } catch (err) {
+    console.warn("Capacitor Preferences not available:", err);
+  }
+}
+
+export default function Login({ user, onAuthSuccess }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -104,16 +119,20 @@ export default function Login({ user }) {
         if (password !== ADMIN_PASSWORD) {
           throw new Error("Wrong admin password.");
         }
-        await signInAdmin();
+        const adminUser = await signInAdmin();
+        await setAuthPreference(adminUser);
+        if (onAuthSuccess) onAuthSuccess(adminUser);
         resetForm();
         return;
       }
 
       if (mode === "login") {
-        await withTimeout(
+        const cred = await withTimeout(
           signInWithEmailAndPassword(auth, cleanedEmail, password),
           "Login"
         );
+        await setAuthPreference(cred.user);
+        if (onAuthSuccess) onAuthSuccess(cred.user);
         resetForm();
         return;
       }
@@ -170,6 +189,8 @@ export default function Login({ user }) {
         "Username reserve"
       );
 
+      await setAuthPreference(cred.user);
+      if (onAuthSuccess) onAuthSuccess(cred.user);
       resetForm();
     } catch (err) {
       console.error(err);

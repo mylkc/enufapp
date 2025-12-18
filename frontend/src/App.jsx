@@ -61,6 +61,28 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { Preferences } = await import("@capacitor/preferences");
+        const stored = await Preferences.get({ key: "enuf.auth" });
+        if (!cancelled && stored?.value && !user) {
+          const parsed = JSON.parse(stored.value);
+          if (parsed?.uid) {
+            setUser((prev) => prev || parsed);
+            setInitializing(false);
+          }
+        }
+      } catch (err) {
+        console.warn("Capacitor Preferences not available:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  useEffect(() => {
     if (user || typeof auth === "undefined") return;
     let attempts = 0;
     const interval = setInterval(() => {
@@ -178,7 +200,10 @@ export default function App() {
   if (!user) {
     return (
       <div className="min-h-screen bg-bg text-ink flex items-center justify-center">
-        <Login user={null} />
+        <Login user={null} onAuthSuccess={(u) => {
+          setUser(u || null);
+          setInitializing(false);
+        }} />
         {debugEnabled && (
           <div className="fixed bottom-4 left-4 right-4 text-[11px] text-muted bg-white/80 border border-stroke rounded-xl p-3">
             <div>debug=on</div>
