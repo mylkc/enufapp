@@ -35,6 +35,8 @@ export default function Watch({ user, initialEmotion }) {
   const [viewProfileId, setViewProfileId] = useState(null);
   const [showFilter, setShowFilter] = useState(false);
   const [filterCoreMoodId, setFilterCoreMoodId] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const touchStartRef = useRef(null);
   const playerRef = useRef(null);
   const vib = () => {
     if (typeof navigator !== "undefined" && navigator.vibrate) {
@@ -162,14 +164,18 @@ export default function Watch({ user, initialEmotion }) {
 
   // Scroll / wheel navigation
   useEffect(() => {
+    if (typeof window === "undefined") return () => {};
     let last = 0;
     const handler = (e) => {
+      if (isTransitioning) return;
       const now = Date.now();
       if (now - last < 200) return;
       if (e.deltaY > 8 && currentIndex < videos.length - 1) {
+        setIsTransitioning(true);
         setCurrentIndex((i) => Math.min(i + 1, videos.length - 1));
         last = now;
       } else if (e.deltaY < -8 && currentIndex > 0) {
+        setIsTransitioning(true);
         setCurrentIndex((i) => Math.max(i - 1, 0));
         last = now;
       }
@@ -177,21 +183,30 @@ export default function Watch({ user, initialEmotion }) {
     const el = playerRef.current;
     el?.addEventListener("wheel", handler, { passive: true });
     return () => el?.removeEventListener("wheel", handler);
-  }, [currentIndex, videos.length]);
+  }, [currentIndex, videos.length, isTransitioning]);
 
   // Arrow keys navigation
   useEffect(() => {
     const handler = (e) => {
+      if (isTransitioning) return;
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+        setIsTransitioning(true);
         setCurrentIndex((i) => Math.min(i + 1, videos.length - 1));
       } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+        setIsTransitioning(true);
         setCurrentIndex((i) => Math.max(i - 1, 0));
       }
     };
     if (typeof window === "undefined") return () => {};
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [videos.length]);
+  }, [videos.length, isTransitioning]);
+
+  useEffect(() => {
+    if (!isTransitioning) return;
+    const timer = setTimeout(() => setIsTransitioning(false), 320);
+    return () => clearTimeout(timer);
+  }, [isTransitioning]);
 
   const hasVideos = videos.length > 0;
   const current = hasVideos ? videos[currentIndex] : null;
@@ -220,8 +235,8 @@ export default function Watch({ user, initialEmotion }) {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-5rem)]">
-      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-start">
+    <div className="relative w-full" style={{ height: "100dvh" }}>
+      <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-start pt-[env(safe-area-inset-top)]">
         <button
           onClick={() => setShowFilter(true)}
           className="px-3 py-1.5 rounded-full text-[11px] border border-white/40 text-white/90 bg-white/10"
@@ -232,7 +247,25 @@ export default function Watch({ user, initialEmotion }) {
 
       <div
         ref={playerRef}
-        className="relative h-[calc(100vh-8rem)] rounded-3xl overflow-hidden bg-black shadow-[0_30px_80px_rgba(10,10,10,0.35)]"
+        className="relative h-full w-full overflow-hidden bg-black"
+        onTouchStart={(e) => {
+          touchStartRef.current = e.touches?.[0]?.clientY ?? null;
+        }}
+        onTouchEnd={(e) => {
+          if (isTransitioning) return;
+          const start = touchStartRef.current;
+          const end = e.changedTouches?.[0]?.clientY ?? null;
+          if (start == null || end == null) return;
+          const delta = start - end;
+          const threshold = 50;
+          if (delta > threshold && currentIndex < videos.length - 1) {
+            setIsTransitioning(true);
+            setCurrentIndex((i) => Math.min(i + 1, videos.length - 1));
+          } else if (delta < -threshold && currentIndex > 0) {
+            setIsTransitioning(true);
+            setCurrentIndex((i) => Math.max(i - 1, 0));
+          }
+        }}
       >
         {loading ? (
           <div className="h-full flex items-center justify-center text-white/70 text-sm">
@@ -240,23 +273,37 @@ export default function Watch({ user, initialEmotion }) {
           </div>
         ) : hasVideos ? (
           <>
-            <video
-              key={current.id}
-              src={current.video_url}
-              className="absolute inset-0 w-full h-full object-contain"
-              autoPlay
-              muted={muted}
-              playsInline
-              onClick={toggleMuted}
-              onPointerDown={(e) => e.currentTarget.pause()}
-              onPointerUp={(e) => e.currentTarget.play()}
-              onPointerLeave={(e) => e.currentTarget.play()}
-              onPointerCancel={(e) => e.currentTarget.play()}
-            />
+            <div
+              className={`absolute inset-0 transition-transform duration-300 ease-out ${
+                isTransitioning ? "" : "will-change-transform"
+              }`}
+              style={{ transform: `translateY(-${currentIndex * 100}%)` }}
+            >
+              {videos.map((video) => (
+                <div
+                  key={video.id}
+                  className="relative w-full"
+                  style={{ height: "100dvh" }}
+                >
+                  <video
+                    src={video.video_url}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    autoPlay={video.id === current.id}
+                    muted={muted}
+                    playsInline
+                    onClick={toggleMuted}
+                    onPointerDown={(e) => e.currentTarget.pause()}
+                    onPointerUp={(e) => e.currentTarget.play()}
+                    onPointerLeave={(e) => e.currentTarget.play()}
+                    onPointerCancel={(e) => e.currentTarget.play()}
+                  />
+                </div>
+              ))}
+            </div>
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-black/40" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
 
-            <div className="absolute bottom-6 left-6 right-20 space-y-2 text-white">
+            <div className="absolute bottom-24 left-5 right-20 space-y-2 text-white pb-[env(safe-area-inset-bottom)]">
               <button
                 onClick={() => setViewProfileId(current.user_id)}
                 className="flex items-center gap-2"
@@ -283,7 +330,7 @@ export default function Watch({ user, initialEmotion }) {
               </div>
             </div>
 
-            <div className="absolute right-5 bottom-16 flex flex-col items-center gap-4 text-white">
+            <div className="absolute right-4 bottom-28 flex flex-col items-center gap-4 text-white pb-[env(safe-area-inset-bottom)]">
               <button
                 onClick={() => toggleLike(current.id)}
                 className="flex flex-col items-center gap-1"
@@ -307,9 +354,6 @@ export default function Watch({ user, initialEmotion }) {
               >
                 {muted ? "Muted" : "Sound"}
               </button>
-              <div className="text-[11px] text-white/70">
-                {currentIndex + 1} / {videos.length}
-              </div>
             </div>
           </>
         ) : (
