@@ -237,7 +237,7 @@ export default function App() {
   // Mood check-in required first
   if (!hasCheckedIn) {
     return (
-      <div className="min-h-screen bg-bg text-ink">
+      <div className="min-h-screen bg-bg text-ink p-6 safe-area">
         <MoodSelector onComplete={handleMoodComplete} onCancel={handleMoodCancel} />
       </div>
     );
