@@ -141,6 +141,25 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [initializing]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return () => {};
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyTouch = body.style.touchAction;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    const prevHtmlTouch = documentElement.style.touchAction;
+    body.style.overflow = "hidden";
+    body.style.touchAction = "none";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.touchAction = "none";
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      body.style.touchAction = prevBodyTouch;
+      documentElement.style.overflow = prevHtmlOverflow;
+      documentElement.style.touchAction = prevHtmlTouch;
+    };
+  }, []);
+
   // Handle mood completion
   const handleMoodComplete = async (mood) => {
     const moodFilter =

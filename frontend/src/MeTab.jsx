@@ -293,7 +293,10 @@ function formatDayLabel(key, todayKeyValue) {
   };
 
   return (
-    <div className="space-y-4 pb-24">
+    <div
+      className="space-y-4 pb-24"
+      style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}
+    >
       {/* Profile Card */}
       <div className="flex items-center justify-between bg-card border border-stroke p-4 rounded-2xl">
         <div className="flex items-center gap-3">

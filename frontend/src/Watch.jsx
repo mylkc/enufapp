@@ -36,6 +36,8 @@ export default function Watch({ user, initialEmotion }) {
   const [showFilter, setShowFilter] = useState(false);
   const [filterCoreMoodId, setFilterCoreMoodId] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState(0);
   const touchStartRef = useRef(null);
   const playerRef = useRef(null);
   const vib = () => {
@@ -167,7 +169,7 @@ export default function Watch({ user, initialEmotion }) {
     if (typeof window === "undefined") return () => {};
     let last = 0;
     const handler = (e) => {
-      if (isTransitioning) return;
+      if (isTransitioning || isDragging) return;
       const now = Date.now();
       if (now - last < 200) return;
       if (e.deltaY > 8 && currentIndex < videos.length - 1) {
@@ -183,12 +185,12 @@ export default function Watch({ user, initialEmotion }) {
     const el = playerRef.current;
     el?.addEventListener("wheel", handler, { passive: true });
     return () => el?.removeEventListener("wheel", handler);
-  }, [currentIndex, videos.length, isTransitioning]);
+  }, [currentIndex, videos.length, isTransitioning, isDragging]);
 
   // Arrow keys navigation
   useEffect(() => {
     const handler = (e) => {
-      if (isTransitioning) return;
+      if (isTransitioning || isDragging) return;
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
         setIsTransitioning(true);
         setCurrentIndex((i) => Math.min(i + 1, videos.length - 1));
@@ -200,7 +202,7 @@ export default function Watch({ user, initialEmotion }) {
     if (typeof window === "undefined") return () => {};
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [videos.length, isTransitioning]);
+  }, [videos.length, isTransitioning, isDragging]);
 
   useEffect(() => {
     if (!isTransitioning) return;
@@ -223,6 +225,25 @@ export default function Watch({ user, initialEmotion }) {
     }
     return <span className="text-lg leading-none">{icon}</span>;
   };
+
+  useEffect(() => {
+    if (typeof document === "undefined") return () => {};
+    const { body, documentElement } = document;
+    const prevBodyOverflow = body.style.overflow;
+    const prevBodyTouch = body.style.touchAction;
+    const prevHtmlOverflow = documentElement.style.overflow;
+    const prevHtmlTouch = documentElement.style.touchAction;
+    body.style.overflow = "hidden";
+    body.style.touchAction = "none";
+    documentElement.style.overflow = "hidden";
+    documentElement.style.touchAction = "none";
+    return () => {
+      body.style.overflow = prevBodyOverflow;
+      body.style.touchAction = prevBodyTouch;
+      documentElement.style.overflow = prevHtmlOverflow;
+      documentElement.style.touchAction = prevHtmlTouch;
+    };
+  }, []);
 
   if (viewProfileId) {
     return (
@@ -250,14 +271,24 @@ export default function Watch({ user, initialEmotion }) {
         className="relative h-full w-full overflow-hidden bg-black"
         onTouchStart={(e) => {
           touchStartRef.current = e.touches?.[0]?.clientY ?? null;
+          setIsDragging(true);
+          setDragOffset(0);
+        }}
+        onTouchMove={(e) => {
+          if (!isDragging) return;
+          const start = touchStartRef.current;
+          const current = e.touches?.[0]?.clientY ?? null;
+          if (start == null || current == null) return;
+          setDragOffset(current - start);
         }}
         onTouchEnd={(e) => {
           if (isTransitioning) return;
           const start = touchStartRef.current;
           const end = e.changedTouches?.[0]?.clientY ?? null;
+          const height = playerRef.current?.clientHeight || 1;
           if (start == null || end == null) return;
           const delta = start - end;
-          const threshold = 50;
+          const threshold = Math.max(60, height * 0.15);
           if (delta > threshold && currentIndex < videos.length - 1) {
             setIsTransitioning(true);
             setCurrentIndex((i) => Math.min(i + 1, videos.length - 1));
@@ -265,6 +296,8 @@ export default function Watch({ user, initialEmotion }) {
             setIsTransitioning(true);
             setCurrentIndex((i) => Math.max(i - 1, 0));
           }
+          setDragOffset(0);
+          setIsDragging(false);
         }}
       >
         {loading ? (
@@ -274,10 +307,12 @@ export default function Watch({ user, initialEmotion }) {
         ) : hasVideos ? (
           <>
             <div
-              className={`absolute inset-0 transition-transform duration-300 ease-out ${
-                isTransitioning ? "" : "will-change-transform"
+              className={`absolute inset-0 ${
+                isDragging ? "" : "transition-transform duration-300 ease-out"
               }`}
-              style={{ transform: `translateY(-${currentIndex * 100}%)` }}
+              style={{
+                transform: `translateY(calc(-${currentIndex * 100}% + ${dragOffset}px))`,
+              }}
             >
               {videos.map((video) => (
                 <div
