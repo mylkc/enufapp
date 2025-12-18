@@ -23,6 +23,9 @@ export default function App() {
   const [lastMood, setLastMood] = useState(null);
   const [activeTab, setActiveTab] = useState("watch");
   const [watchFilter, setWatchFilter] = useState("");
+  const debugEnabled =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("debug");
 
   // Listen for authentication state
   useEffect(() => {
@@ -56,6 +59,27 @@ export default function App() {
       if (unsub) unsub();
     };
   }, []);
+
+  useEffect(() => {
+    if (user || typeof auth === "undefined") return;
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      try {
+        if (auth.currentUser) {
+          setUser(auth.currentUser);
+          setInitializing(false);
+          clearInterval(interval);
+        }
+      } catch (err) {
+        console.error("Auth fallback check failed:", err);
+      }
+      if (attempts >= 5) {
+        clearInterval(interval);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   useEffect(() => {
     if (!user?.uid || !supabaseConfigured) return;
@@ -140,6 +164,12 @@ export default function App() {
     return (
       <div className="min-h-screen bg-bg flex items-center justify-center text-muted text-sm">
         Loading ENUF...
+        {debugEnabled && (
+          <div className="fixed bottom-4 left-4 right-4 text-[11px] text-muted bg-white/80 border border-stroke rounded-xl p-3">
+            <div>debug=on</div>
+            <div>auth.currentUser: {auth?.currentUser ? "set" : "null"}</div>
+          </div>
+        )}
       </div>
     );
   }
@@ -149,6 +179,13 @@ export default function App() {
     return (
       <div className="min-h-screen bg-bg text-ink flex items-center justify-center">
         <Login user={null} />
+        {debugEnabled && (
+          <div className="fixed bottom-4 left-4 right-4 text-[11px] text-muted bg-white/80 border border-stroke rounded-xl p-3">
+            <div>debug=on</div>
+            <div>initializing: {String(initializing)}</div>
+            <div>auth.currentUser: {auth?.currentUser ? "set" : "null"}</div>
+          </div>
+        )}
       </div>
     );
   }
