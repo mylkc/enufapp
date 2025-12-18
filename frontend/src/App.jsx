@@ -26,38 +26,65 @@ export default function App() {
 
   // Listen for authentication state
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
-      setUser(u || null);
+    let timeoutId;
+    let unsub = null;
+
+    try {
+      timeoutId = setTimeout(() => {
+        setInitializing(false);
+      }, 3000);
+
+      unsub = onAuthStateChanged(auth, (u) => {
+        setUser(u || null);
+        setInitializing(false);
+
+        if (u) {
+          setHasCheckedIn(false);
+          setActiveTab("mood");
+        } else {
+          setLastMood(null);
+          setActiveTab("mood");
+        }
+      });
+    } catch (err) {
+      console.error("Auth initialization failed:", err);
       setInitializing(false);
+    }
 
-      if (u) {
-        setHasCheckedIn(false);
-        setActiveTab("mood");
-      } else {
-        setLastMood(null);
-        setActiveTab("mood");
-      }
-    });
-
-    return () => unsub();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      if (unsub) unsub();
+    };
   }, []);
 
   useEffect(() => {
     if (!user?.uid || !supabaseConfigured) return;
-    supabase
-      .from("users")
-      .upsert(
-        {
-          id: user.uid,
-          email: user.email || null,
-          full_name: user.displayName || null,
-          profile_pic_url: user.photoURL || null,
-        },
-        { onConflict: "id" }
-      )
-      .then(({ error }) => {
-        if (error) console.error("Failed to seed profile:", error);
-      });
+    let cancelled = false;
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from("users")
+          .upsert(
+            {
+              id: user.uid,
+              email: user.email || null,
+              full_name: user.displayName || null,
+              profile_pic_url: user.photoURL || null,
+            },
+            { onConflict: "id" }
+          );
+        if (error && !cancelled) {
+          console.error("Failed to seed profile:", error);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to seed profile:", err);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [user?.uid]);
 
   useEffect(() => {
