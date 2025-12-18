@@ -3,6 +3,7 @@ import { auth, db, storage } from "./lib/firebase";
 import { updateProfile, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { supabase } from "./lib/supabase";
 
 export default function SettingsPage({ user }) {
   const [fullName, setFullName] = useState(user?.displayName || "");
@@ -221,6 +222,33 @@ export default function SettingsPage({ user }) {
         displayName: fullName,
         photoURL,
       });
+
+      const trimmedUsername = username.trim().toLowerCase();
+      if (trimmedUsername) {
+        const { data: existing, error: usernameError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("username", trimmedUsername)
+          .limit(1);
+        if (usernameError) throw usernameError;
+        if (existing?.[0] && existing[0].id !== user.uid) {
+          throw new Error("That username is already taken.");
+        }
+      }
+
+      const { error: upsertError } = await supabase
+        .from("users")
+        .upsert(
+          {
+            id: user.uid,
+            email: user.email || null,
+            full_name: fullName.trim(),
+            username: trimmedUsername || null,
+            profile_pic_url: photoURL || null,
+          },
+          { onConflict: "id" }
+        );
+      if (upsertError) throw upsertError;
 
       alert("Profile updated!");
     } catch (err) {

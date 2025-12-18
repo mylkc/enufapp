@@ -14,7 +14,7 @@ import MoodSelector from "./MoodSelector";
 import FriendsTab from "./FriendsTab";
 import SettingsPage from "./SettingsPage";
 import MeTab from "./MeTab"; // ✅ THE REAL ONE
-import { MEDIA_SERVER_URL } from "./config";
+import { supabase } from "./lib/supabase";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -42,6 +42,24 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    if (!user?.uid) return;
+    supabase
+      .from("users")
+      .upsert(
+        {
+          id: user.uid,
+          email: user.email || null,
+          full_name: user.displayName || null,
+          profile_pic_url: user.photoURL || null,
+        },
+        { onConflict: "id" }
+      )
+      .then(({ error }) => {
+        if (error) console.error("Failed to seed profile:", error);
+      });
+  }, [user?.uid]);
+
   // Handle mood completion
   const handleMoodComplete = async (mood) => {
     const moodFilter =
@@ -55,19 +73,18 @@ export default function App() {
     setActiveTab("watch");
 
     if (user?.uid) {
-      await fetch(`${MEDIA_SERVER_URL}/moods`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.uid,
-          mood_level: mood.level,
-          mood_label: mood.label,
-          core_mood: mood.core,
-          sub_mood: mood.subMood,
-          reasons: mood.reasons,
-          emotion_tag: mood.emotionTag,
-        }),
+      const { error } = await supabase.from("moods").insert({
+        user_id: user.uid,
+        mood_level: mood.level ?? null,
+        mood_label: mood.label ?? null,
+        core_mood: mood.core ?? null,
+        sub_mood: mood.subMood ?? null,
+        reasons: Array.isArray(mood.reasons) ? mood.reasons.join(", ") : mood.reasons ?? null,
+        emotion_tag: mood.emotionTag ?? null,
       });
+      if (error) {
+        console.error("Failed to save mood:", error);
+      }
     }
   };
 

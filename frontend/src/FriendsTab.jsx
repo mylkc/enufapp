@@ -2,8 +2,32 @@
 import { useEffect, useState } from "react";
 import { db } from "./lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { MEDIA_SERVER_URL } from "./config";
 import PublicProfile from "./PublicProfile";
+import { supabase } from "./lib/supabase";
+
+async function fetchFriendRow(currentUserId, otherUserId) {
+  if (!currentUserId || !otherUserId) return null;
+  const { data, error } = await supabase
+    .from("friends")
+    .select("*")
+    .or(
+      `and(requester_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`
+    )
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+async function fetchUsersByIds(ids) {
+  if (!ids.length) return [];
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, full_name, username, profile_pic_url")
+    .in("id", ids);
+  if (error) throw error;
+  return data || [];
+}
 
 export default function FriendsTab({ user }) {
   const [search, setSearch] = useState("");
@@ -27,19 +51,63 @@ export default function FriendsTab({ user }) {
       setLoading(true);
       setError("");
 
-      const [reqRes, friendsRes] = await Promise.all([
-        fetch(`${MEDIA_SERVER_URL}/friends/requests?user_id=${user.uid}`),
-        fetch(`${MEDIA_SERVER_URL}/friends/list?user_id=${user.uid}`),
+      const [{ data: requestRows, error: requestError }, { data: friendRows, error: friendError }] =
+        await Promise.all([
+          supabase
+            .from("friends")
+            .select("*")
+            .eq("receiver_id", user.uid)
+            .eq("status", "pending")
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("friends")
+            .select("*")
+            .or(`requester_id.eq.${user.uid},receiver_id.eq.${user.uid}`)
+            .eq("status", "accepted")
+            .order("created_at", { ascending: false }),
+        ]);
+
+      if (requestError) throw requestError;
+      if (friendError) throw friendError;
+
+      const requesterIds = (requestRows || []).map((r) => r.requester_id);
+      const friendIds = (friendRows || []).map((r) =>
+        r.requester_id === user.uid ? r.receiver_id : r.requester_id
+      );
+
+      const [requestUsers, friendsUsers] = await Promise.all([
+        fetchUsersByIds(requesterIds),
+        fetchUsersByIds(friendIds),
       ]);
 
-      const reqJson = await reqRes.json();
-      const friendsJson = await friendsRes.json();
+      const requesterMap = new Map(requestUsers.map((u) => [u.id, u]));
+      const friendMap = new Map(friendsUsers.map((u) => [u.id, u]));
 
-      if (!reqRes.ok) throw new Error(reqJson.error || "Failed to load requests");
-      if (!friendsRes.ok) throw new Error(friendsJson.error || "Failed to load friends");
+      const incomingMapped = (requestRows || []).map((r) => {
+        const u = requesterMap.get(r.requester_id);
+        return {
+          ...r,
+          requester_full_name: u?.full_name || "",
+          requester_username: u?.username || "",
+          requester_profile_pic_url: u?.profile_pic_url || null,
+        };
+      });
 
-      setIncoming(reqJson.requests || []);
-      setFriends(friendsJson.friends || []);
+      const friendsMapped = (friendRows || []).map((r) => {
+        const friendId =
+          r.requester_id === user.uid ? r.receiver_id : r.requester_id;
+        const u = friendMap.get(friendId);
+        return {
+          ...r,
+          friend_id: friendId,
+          friend_full_name: u?.full_name || "",
+          friend_username: u?.username || "",
+          friend_profile_pic_url: u?.profile_pic_url || null,
+        };
+      });
+
+      setIncoming(incomingMapped);
+      setFriends(friendsMapped);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load friends data");
@@ -77,18 +145,35 @@ export default function FriendsTab({ user }) {
     setSending(true);
 
     try {
-      const res = await fetch(`${MEDIA_SERVER_URL}/friends/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const existing = await fetchFriendRow(user.uid, targetUid);
+      if (existing) {
+        if (existing.status === "accepted") {
+          await loadFriends();
+          alert("You're already friends.");
+          return;
+        }
+        if (existing.status === "pending") {
+          await loadFriends();
+          alert("Friend request already pending.");
+          return;
+        }
+        const { error: updateError } = await supabase
+          .from("friends")
+          .update({
+            requester_id: user.uid,
+            receiver_id: targetUid,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("friends").insert({
           requester_id: user.uid,
           receiver_id: targetUid,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send friend request");
+          status: "pending",
+        });
+        if (insertError) throw insertError;
       }
 
       // Reload friends / requests so UI updates
@@ -105,16 +190,11 @@ export default function FriendsTab({ user }) {
   async function respondToRequest(requestId, status) {
     setError("");
     try {
-      const res = await fetch(`${MEDIA_SERVER_URL}/friends/respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request_id: requestId, status }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to respond to request");
-      }
+      const { error: updateError } = await supabase
+        .from("friends")
+        .update({ status })
+        .eq("id", requestId);
+      if (updateError) throw updateError;
 
       await loadFriends();
     } catch (err) {

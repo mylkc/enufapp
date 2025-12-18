@@ -1,12 +1,13 @@
 // frontend/src/components/ProfileSettingsModal.jsx
 import { useEffect, useState } from "react";
-import { MEDIA_SERVER_URL } from "./config";
+import { updateProfile } from "firebase/auth";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { storage } from "./lib/firebase";
+import { supabase } from "./lib/supabase";
 
 function resolveUrl(url) {
   if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  if (url.startsWith("/")) return `${MEDIA_SERVER_URL}${url}`;
-  return `${MEDIA_SERVER_URL}/${url}`;
+  return url;
 }
 
 export default function ProfileSettingsModal({ user, profile, onClose, onSaved }) {
@@ -28,36 +29,49 @@ export default function ProfileSettingsModal({ user, profile, onClose, onSaved }
     setError("");
 
     try {
-      const fd = new FormData();
-      fd.append("user_id", user.uid);
-      fd.append("email", user.email || "");
-      fd.append("full_name", fullName.trim());
-      fd.append("username", username.trim());
-      if (avatarFile) {
-        fd.append("avatar", avatarFile);
+      const trimmedUsername = username.trim().toLowerCase();
+      if (trimmedUsername) {
+        const { data: existing, error: usernameError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("username", trimmedUsername)
+          .limit(1);
+        if (usernameError) throw usernameError;
+        if (existing?.[0] && existing[0].id !== user.uid) {
+          throw new Error("Username already taken");
+        }
       }
 
-      const res = await fetch(`${MEDIA_SERVER_URL}/profile`, {
-        method: "POST",
-        body: fd,
+      let profilePicUrl = profile?.profile_pic_url || null;
+      if (avatarFile) {
+        const fileRef = ref(storage, `profile_pics/${user.uid}`);
+        await uploadBytes(fileRef, avatarFile);
+        profilePicUrl = await getDownloadURL(fileRef);
+      }
+
+      const { data: updated, error: upsertError } = await supabase
+        .from("users")
+        .upsert(
+          {
+            id: user.uid,
+            email: user.email || null,
+            full_name: fullName.trim(),
+            username: trimmedUsername || null,
+            profile_pic_url: profilePicUrl,
+          },
+          { onConflict: "id" }
+        )
+        .select("*")
+        .maybeSingle();
+      if (upsertError) throw upsertError;
+
+      await updateProfile(user, {
+        displayName: fullName.trim(),
+        photoURL: profilePicUrl || null,
       });
 
-      if (res.status === 409) {
-        const json = await res.json();
-        throw new Error(json.error || "Username already taken");
-      }
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Profile save failed");
-      }
-
-      const json = await res.json();
-      console.log("Profile saved successfully, calling onSaved with:", json.profile);
-      if (onSaved) {
-        console.log("onSaved callback exists, awaiting it");
-        await onSaved(json.profile);
-        console.log("onSaved callback completed");
+      if (onSaved && updated) {
+        await onSaved(updated);
       }
     } catch (err) {
       console.error("Profile save error:", err);

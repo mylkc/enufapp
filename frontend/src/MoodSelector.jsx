@@ -5,7 +5,7 @@ export const CORE_MOODS = [
     id: "good",
     label: "Good",
     level: 5,
-    icon: "😊",
+    icon: "/mood-5-big-smile.png",
     subMoods: [
       "Happy",
       "Proud",
@@ -29,7 +29,7 @@ export const CORE_MOODS = [
     id: "okay",
     label: "Okay",
     level: 4,
-    icon: "🙂",
+    icon: "/mood-4-smile.png",
     subMoods: [
       "Neutral",
       "Tired",
@@ -52,7 +52,7 @@ export const CORE_MOODS = [
     id: "stressed",
     label: "Stressed",
     level: 3,
-    icon: "😰",
+    icon: "/mood-3-neutral.png",
     subMoods: [
       "Overwhelmed",
       "Anxious",
@@ -76,7 +76,7 @@ export const CORE_MOODS = [
     id: "sad",
     label: "Sad",
     level: 2,
-    icon: "😔",
+    icon: "/mood-2-frown.png",
     subMoods: [
       "Lonely",
       "Hopeless",
@@ -100,7 +100,7 @@ export const CORE_MOODS = [
     id: "angry",
     label: "Angry",
     level: 1,
-    icon: "😡",
+    icon: "/mood-1-deep-frown.png",
     subMoods: [
       "Frustrated",
       "Annoyed",
@@ -264,32 +264,34 @@ export default function MoodSelector({ onComplete, onCancel }) {
   };
 
   const step = !coreMood ? "core" : !subMood ? "sub" : "reason";
+  const renderIcon = (icon, label) => {
+    if (typeof icon === "string" && icon.endsWith(".png")) {
+      return (
+        <img
+          src={icon}
+          alt={label}
+          className="w-8 h-8 object-contain"
+        />
+      );
+    }
+    return <span className="text-2xl leading-none">{icon}</span>;
+  };
 
   return (
+
     <section className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="text-[11px] tracking-[0.28em] uppercase text-muted">
-            Mood
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-semibold mt-1">
-            How are you really feeling right now...
-          </h1>
-          <p className="text-xs text-muted mt-2 max-w-xl">
-            Tap a mood to open the flow. We'll guide you through in two clean steps.
-          </p>
-        </div>
-        {onCancel && (
+      {onCancel && (
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={onCancel}
             className="text-muted hover:text-ink text-lg px-2"
             aria-label="Close mood selector"
           >
-            ×
+            A-
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Immersive card */}
       <div className="rounded-3xl bg-white/85 border border-stroke p-0 overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.55)]">
@@ -313,18 +315,12 @@ export default function MoodSelector({ onComplete, onCancel }) {
               <span className={stage === "reason" ? "text-ink" : ""}>Reasons</span>
             </div>
           </div>
-          {coreMood && (
-            <div className="text-[11px] text-ink">
-              {coreMood.label}
-              {subMood ? ` • ${subMood}` : ""}
-            </div>
-          )}
         </div>
 
         {/* Stage content */}
         <div className="p-5 sm:p-6 space-y-6">
           {stage === "core" && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
               {CORE_MOODS.map((m) => {
                 const active = m.id === coreMoodId;
                 return (
@@ -332,19 +328,14 @@ export default function MoodSelector({ onComplete, onCancel }) {
                     key={m.id}
                     type="button"
                     onClick={() => handleCoreSelect(m.id)}
-                    className={`flex flex-col items-start gap-2 rounded-2xl border px-4 py-4 text-left transition ${
+                    aria-label={m.label}
+                    className={`flex items-center justify-center rounded-2xl border px-4 py-4 text-left transition ${
                       active
                         ? "border-ink bg-ink text-white shadow-lg shadow-black/10"
                         : "border-stroke bg-white text-ink hover:border-ink/30"
                     }`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl leading-none">{m.icon}</span>
-                      <div className="text-base font-semibold">{m.label}</div>
-                    </div>
-                    <div className="text-[11px] text-muted">
-                      {m.subMoods.slice(0, 3).join(", ")}...
-                    </div>
+                    {renderIcon(m.icon, m.label)}
                   </button>
                 );
               })}

@@ -1,11 +1,35 @@
 // frontend/src/PublicProfile.jsx
 import { useEffect, useRef, useState } from "react";
-import { MEDIA_SERVER_URL } from "./config";
+import { supabase } from "./lib/supabase";
 
 function resolveUrl(url) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  return `${MEDIA_SERVER_URL}/${url}`;
+  return url || "";
+}
+
+async function fetchFriendRow(currentUserId, otherUserId) {
+  if (!currentUserId || !otherUserId) return null;
+  const { data, error } = await supabase
+    .from("friends")
+    .select("*")
+    .or(
+      `and(requester_id.eq.${currentUserId},receiver_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},receiver_id.eq.${currentUserId})`
+    )
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (error) throw error;
+  return data?.[0] || null;
+}
+
+async function fetchFriendStatus(currentUserId, otherUserId) {
+  const row = await fetchFriendRow(currentUserId, otherUserId);
+  if (!row) {
+    return { status: "none", direction: null, friend: null };
+  }
+  let direction = null;
+  if (row.status === "pending") {
+    direction = row.requester_id === currentUserId ? "outgoing" : "incoming";
+  }
+  return { status: row.status, direction, friend: row };
 }
 
 function VideoLightbox({ videos, startIndex, onClose }) {
@@ -123,25 +147,22 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
       setError("");
 
       const [profileRes, videosRes, statusRes] = await Promise.all([
-        fetch(`${MEDIA_SERVER_URL}/profile?user_id=${userId}`),
-        fetch(`${MEDIA_SERVER_URL}/videos?user_id=${userId}`),
-        fetch(
-          `${MEDIA_SERVER_URL}/friends/status?user_id=${currentUserId}&other_id=${userId}`
-        ),
+        supabase.from("users").select("*").eq("id", userId).maybeSingle(),
+        supabase
+          .from("videos")
+          .select("id, video_url, emotion_tag, caption, user_id, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+        fetchFriendStatus(currentUserId, userId),
       ]);
 
-      const profileJson = await profileRes.json();
-      const videosJson = await videosRes.json();
-      const statusJson = await statusRes.json();
+      if (profileRes.error) throw profileRes.error;
+      if (videosRes.error) throw videosRes.error;
 
-      if (!profileRes.ok) throw new Error(profileJson.error || "Profile error");
-      if (!videosRes.ok) throw new Error(videosJson.error || "Videos error");
-      if (!statusRes.ok) throw new Error(statusJson.error || "Friend status error");
-
-      setProfile(profileJson.profile || null);
-      setVideos(videosJson.videos || []);
-      setFriendStatus(statusJson.status || "none");
-      setFriendDirection(statusJson.direction || null);
+      setProfile(profileRes.data || null);
+      setVideos(videosRes.data || []);
+      setFriendStatus(statusRes.status || "none");
+      setFriendDirection(statusRes.direction || null);
     } catch (err) {
       console.error(err);
       setError(err.message || "Failed to load profile");
@@ -153,19 +174,37 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
   async function sendFriendRequest() {
     try {
       setError("");
-
-      const res = await fetch(`${MEDIA_SERVER_URL}/friends/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const existing = await fetchFriendRow(currentUserId, userId);
+      if (existing) {
+        if (existing.status === "accepted") {
+          setFriendStatus("friends");
+          return;
+        }
+        if (existing.status === "pending") {
+          setFriendStatus("pending");
+          setFriendDirection(
+            existing.requester_id === currentUserId ? "outgoing" : "incoming"
+          );
+          return;
+        }
+        const { error: updateError } = await supabase
+          .from("friends")
+          .update({
+            requester_id: currentUserId,
+            receiver_id: userId,
+            status: "pending",
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase.from("friends").insert({
           requester_id: currentUserId,
           receiver_id: userId,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to send request");
-
+          status: "pending",
+        });
+        if (insertError) throw insertError;
+      }
       await loadAll();
     } catch (err) {
       console.error(err);
@@ -176,13 +215,13 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
   async function removeFriend() {
     try {
       setError("");
-      const res = await fetch(`${MEDIA_SERVER_URL}/friends/remove`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: currentUserId, other_id: userId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to remove friend");
+      const { error: deleteError } = await supabase
+        .from("friends")
+        .delete()
+        .or(
+          `and(requester_id.eq.${currentUserId},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${currentUserId})`
+        );
+      if (deleteError) throw deleteError;
       await loadAll();
     } catch (err) {
       console.error(err);
@@ -193,26 +232,15 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
   async function acceptIncoming() {
     try {
       setError("");
-      // Reload to get latest friend row
-      const statusRes = await fetch(
-        `${MEDIA_SERVER_URL}/friends/status?user_id=${currentUserId}&other_id=${userId}`
-      );
-      const statusJson = await statusRes.json();
-      if (!statusRes.ok || !statusJson.friend) {
+      const existing = await fetchFriendRow(currentUserId, userId);
+      if (!existing) {
         throw new Error("No pending request to accept");
       }
-
-      const res = await fetch(`${MEDIA_SERVER_URL}/friends/respond`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          request_id: statusJson.friend.id,
-          status: "accepted",
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to accept");
+      const { error: updateError } = await supabase
+        .from("friends")
+        .update({ status: "accepted" })
+        .eq("id", existing.id);
+      if (updateError) throw updateError;
 
       await loadAll();
     } catch (err) {
@@ -308,7 +336,7 @@ export default function PublicProfile({ userId, currentUserId, onBack }) {
           <div className="px-4 flex items-center gap-3 mb-4">
             {profile?.profile_pic_url ? (
               <img
-                src={profile.profile_pic_url}
+                src={resolveUrl(profile.profile_pic_url)}
                 className="w-14 h-14 rounded-full object-cover border border-stroke"
               />
             ) : (

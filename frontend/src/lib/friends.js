@@ -1,30 +1,27 @@
-import { MEDIA_SERVER_URL } from "../config";
+import { supabase } from "./supabase";
 
 export async function sendFriendRequest(requester_id, receiver_id) {
-  const res = await fetch(`${MEDIA_SERVER_URL}/friends/request`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ requester_id, receiver_id })
+  return supabase.from("friends").insert({
+    requester_id,
+    receiver_id,
+    status: "pending"
   });
-  return res.json();
 }
 
 export async function acceptFriendRequest(id) {
-  const res = await fetch(`${MEDIA_SERVER_URL}/friends/accept/${id}`, {
-    method: "POST"
-  });
-  return res.json();
+  return supabase.from("friends").update({ status: "accepted" }).eq("id", id);
 }
 
 export async function rejectFriendRequest(id) {
-  const res = await fetch(`${MEDIA_SERVER_URL}/friends/reject/${id}`, {
-    method: "POST"
-  });
-  return res.json();
+  return supabase.from("friends").update({ status: "rejected" }).eq("id", id);
 }
 
 export async function getFriends(user_id) {
-  const res = await fetch(`${MEDIA_SERVER_URL}/friends/list?user_id=${user_id}`);
-  return res.json();
+  return supabase
+    .from("friends")
+    .select("*")
+    .or(`requester_id.eq.${user_id},receiver_id.eq.${user_id}`)
+    .eq("status", "accepted")
+    .order("created_at", { ascending: false });
 }
  

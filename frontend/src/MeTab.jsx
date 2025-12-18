@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { signOut } from "firebase/auth";
-import { MEDIA_SERVER_URL } from "./config";
 import ProfileSettingsModal from "./ProfileSettingsModal";
 import { auth } from "./lib/firebase";
+import { supabase } from "./lib/supabase";
 
 function resolveUrl(url) {
-  if (!url) return "";
-  if (url.startsWith("http")) return url;
-  return `${MEDIA_SERVER_URL}/${url}`;
+  return url || "";
 }
 
 import { CORE_MOODS } from "./MoodSelector";
@@ -30,6 +28,16 @@ const EMOTION_OPTIONS = [
 
 const normalizeEmotion = (val) => (val ? val.toLowerCase().trim() : "");
 const niceLabel = (e) => (e ? e.split(" ").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ") : "");
+const sanitizeFileName = (name) =>
+  (name || "upload")
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+const renderIcon = (icon, label) => {
+  if (typeof icon === "string" && icon.endsWith(".png")) {
+    return <img src={icon} alt={label} className="w-5 h-5 object-contain" />;
+  }
+  return <span className="text-lg leading-none">{icon}</span>;
+};
 
 
 
@@ -49,8 +57,6 @@ export default function MeTab({ user, setActiveTab }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  // Server health status for the upload modal
-  const [uploadServerStatus, setUploadServerStatus] = useState({ ok: true, message: "" });
   // Upload-specific mood state
   const [uploadCoreMoodId, setUploadCoreMoodId] = useState(null);
   const [uploadSubMood, setUploadSubMood] = useState("");
@@ -94,70 +100,33 @@ export default function MeTab({ user, setActiveTab }) {
     load();
   }, [user?.uid]);
 
-  // Check backend health when upload modal opens so we can show a helpful warning
-  useEffect(() => {
-    if (!showUpload) return;
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const res = await fetch(`${MEDIA_SERVER_URL}/`);
-        const contentType = res.headers.get("content-type") || "";
-        if (!res.ok) {
-          const txt = await res.text();
-          if (!cancelled) setUploadServerStatus({ ok: false, message: `Status ${res.status}: ${txt.slice(0,200)}` });
-          return;
-        }
-        if (!contentType.includes("application/json")) {
-          const txt = await res.text();
-          if (!cancelled) setUploadServerStatus({ ok: false, message: `Unexpected content: ${txt.slice(0,200)}` });
-          return;
-        }
-        const data = await res.json();
-        if (!cancelled) setUploadServerStatus({ ok: true, message: data.message || "ok" });
-      } catch (err) {
-        if (!cancelled) setUploadServerStatus({ ok: false, message: err.message });
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showUpload]);
-
   async function load() {
     try {
-      const [moodsRes, videosRes, profileRes] = await Promise.all([
-        fetch(`${MEDIA_SERVER_URL}/moods?user_id=${user.uid}`),
-        fetch(`${MEDIA_SERVER_URL}/videos?user_id=${user.uid}`),
-        fetch(`${MEDIA_SERVER_URL}/profile?user_id=${user.uid}`),
-      ]);
+      const [{ data: moodsData, error: moodsError }, { data: videosData, error: videosError }, { data: profileData, error: profileError }] =
+        await Promise.all([
+          supabase
+            .from("moods")
+            .select("id, mood_level, mood_label, core_mood, sub_mood, reasons, emotion_tag, created_at")
+            .eq("user_id", user.uid)
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("videos")
+            .select("id, video_url, emotion_tag, caption, user_id, user_email, created_at, storage_path")
+            .eq("user_id", user.uid)
+            .order("created_at", { ascending: false }),
+          supabase.from("users").select("*").eq("id", user.uid).maybeSingle(),
+        ]);
 
-      // Helper to parse JSON or throw a helpful error
-      const parseJsonOrThrow = async (res, label) => {
-        const ct = res.headers.get("content-type") || "";
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`${label} request failed (status ${res.status}): ${txt.slice(0,500)}`);
-        }
-        if (!ct.includes("application/json")) {
-          const txt = await res.text();
-          throw new Error(`${label} returned non-JSON: ${txt.slice(0,500)}`);
-        }
-        return res.json();
-      };
+      if (moodsError) throw moodsError;
+      if (videosError) throw videosError;
+      if (profileError) throw profileError;
 
-      const moodsJson = await parseJsonOrThrow(moodsRes, "Moods");
-      const videosJson = await parseJsonOrThrow(videosRes, "Videos");
-      const profileJson = await parseJsonOrThrow(profileRes, "Profile");
-
-      const moods = (moodsJson.moods || []);
-      const videos = (videosJson.videos || []);
-      const profileData = (profileJson.profile || null);
+      const moods = moodsData || [];
+      const videos = videosData || [];
 
       setMoods(moods);
       setVideos(videos);
-      setProfile(profileData);
+      setProfile(profileData || null);
     } catch (err) {
       console.error("Failed to load data:", err);
       showToast(err.message || "Failed to load data", "error");
@@ -167,15 +136,35 @@ export default function MeTab({ user, setActiveTab }) {
   async function deleteVideo(id) {
     const ok = window.confirm("Delete this video...");
     if (!ok) return;
+    try {
+      const { data: existing, error: fetchError } = await supabase
+        .from("videos")
+        .select("id, storage_path")
+        .eq("id", id)
+        .maybeSingle();
+      if (fetchError) throw fetchError;
 
-    const res = await fetch(`${MEDIA_SERVER_URL}/videos/${id}`, {
-      method: "DELETE",
-    });
+      if (existing?.storage_path) {
+        const { error: storageError } = await supabase
+          .storage
+          .from("videos")
+          .remove([existing.storage_path]);
+        if (storageError) {
+          console.error("Failed to remove storage file:", storageError);
+        }
+      }
 
-    const data = await res.json();
-    if (data.success) {
+      const { error: deleteError } = await supabase
+        .from("videos")
+        .delete()
+        .eq("id", id);
+      if (deleteError) throw deleteError;
+
       setVideos((prev) => prev.filter((v) => v.id !== id));
       setMenuOpen(null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+      showToast(err.message || "Delete failed", "error");
     }
   }
 
@@ -196,36 +185,39 @@ export default function MeTab({ user, setActiveTab }) {
       setUploading(true);
       setUploadError("");
 
-      const formData = new FormData();
-      formData.append("video", uploadFile);
-      formData.append("emotion", uploadEmotion);
-      formData.append("caption", uploadCaption);
-      formData.append("user_id", user.uid);
-      formData.append("user_email", user.email);
+      const fileName = `${Date.now()}-${sanitizeFileName(uploadFile.name)}`;
+      const storagePath = `users/${user.uid}/${fileName}`;
 
-      const res = await fetch(`${MEDIA_SERVER_URL}/upload`, {
-        method: "POST",
-        body: formData,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from("videos")
+        .upload(storagePath, uploadFile, {
+          contentType: uploadFile.type || "video/mp4",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
 
-      // If the server didn't return JSON (e.g., it's serving HTML or is down),
-      // read the text body and show it to the user for easier debugging.
-      let data;
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        // Provide a helpful error message that includes a snippet of the response.
-        throw new Error(
-          `Server returned unexpected response (status: ${res.status}): ${
-            text ? text.slice(0, 1000) : "<empty response>"
-          }`
-        );
+      const { data: publicData } = supabase.storage
+        .from("videos")
+        .getPublicUrl(storagePath);
+      const publicUrl = publicData?.publicUrl;
+      if (!publicUrl) {
+        throw new Error("Failed to resolve uploaded video URL.");
       }
 
-      if (!res.ok || !data.video) {
-        throw new Error(data.error || "Upload failed");
+      const { data: inserted, error: insertError } = await supabase
+        .from("videos")
+        .insert({
+          video_url: publicUrl,
+          storage_path: storagePath,
+          emotion_tag: uploadEmotion,
+          caption: uploadCaption || null,
+          user_id: user.uid,
+          user_email: user.email || null,
+        })
+        .select("id")
+        .maybeSingle();
+      if (insertError || !inserted) {
+        throw new Error(insertError?.message || "Upload failed");
       }
 
       setUploadFile(null);
@@ -329,12 +321,6 @@ function formatDayLabel(key, todayKeyValue) {
           >
             Settings
           </button>
-          <button
-            onClick={handleSignOut}
-            className="px-3 py-1.5 bg-red-500/90 text-white rounded-full"
-          >
-            Sign out
-          </button>
         </div>
       </div>
 
@@ -357,14 +343,14 @@ function formatDayLabel(key, todayKeyValue) {
 
       {/* VIDEO GRID */}
       {active === "videos" && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           {videos.map((v) => {
             const src = resolveUrl(v.video_url);
 
             return (
               <div
                 key={v.id}
-                className="relative cursor-pointer rounded-xl overflow-hidden border border-stroke group"
+                className="relative cursor-pointer rounded-2xl overflow-hidden bg-black/80"
                 onClick={() =>
                   setSelectedVideoIndex(videos.findIndex((item) => item.id === v.id))
                 }
@@ -374,24 +360,24 @@ function formatDayLabel(key, todayKeyValue) {
                   src={src}
                   muted
                   playsInline
-                  className="w-full h-40 object-cover pointer-events-none"
+                  className="w-full aspect-[9/16] object-cover pointer-events-none"
                 />
 
                 {/* 3-dot menu */}
                 <button
-                  className="absolute top-2 right-2 bg-ink/70 text-white rounded-full px-2 py-1 z-20"
+                  className="absolute top-2 right-2 bg-black/60 text-white rounded-full px-2 py-1 z-20 text-[11px]"
                   onClick={(e) => {
                     e.stopPropagation();
                     setMenuOpen(menuOpen === v.id ? null : v.id);
                   }}
                 >
-                  ...
+                  •••
                 </button>
 
                 {/* Delete Dropdown */}
                 {menuOpen === v.id && (
                   <div
-                    className="absolute top-10 right-2 bg-card text-ink rounded-lg shadow-lg p-2 z-30"
+                    className="absolute top-10 right-2 bg-white text-ink rounded-lg shadow-lg p-2 z-30"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <button
@@ -512,13 +498,6 @@ function formatDayLabel(key, todayKeyValue) {
                   </button>
                 </div>
 
-                {/* Server health warning */}
-                {!uploadServerStatus.ok && (
-                  <div className="text-sm text-yellow-300 bg-yellow-900/10 p-2 rounded">
-                    Backend may be unreachable: {uploadServerStatus.message}
-                  </div>
-                )}
-
                 {uploadStep === "select" ? (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-stroke bg-ink/40 p-3">
@@ -605,7 +584,7 @@ function formatDayLabel(key, todayKeyValue) {
                                   : "bg-white border-stroke text-ink hover:border-ink/30"
                               }`}
                             >
-                              <span className="text-lg leading-none">{m.icon}</span>
+                              {renderIcon(m.icon, m.label)}
                               <div className="font-semibold">{m.label}</div>
                             </button>
                           );
