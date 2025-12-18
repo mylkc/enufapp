@@ -12,6 +12,18 @@ import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 const ADMIN_ALIAS = "enuf.";
 const ADMIN_EMAIL = "enuf.@enuf.local";
 const ADMIN_PASSWORD = "2271455792882";
+const API_URL = import.meta.env?.VITE_API_URL || "";
+if (!API_URL && typeof console !== "undefined") {
+  console.warn("VITE_API_URL is not set. Login will still use Firebase Auth.");
+}
+
+const withTimeout = (promise, label, ms = 15000) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out`)), ms)
+    ),
+  ]);
 
 export default function Login({ user }) {
   const [mode, setMode] = useState("login"); // "login" | "signup"
@@ -33,37 +45,44 @@ export default function Login({ user }) {
   // Special-case admin login with alias-only credential
   const signInAdmin = async () => {
     try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        ADMIN_EMAIL,
-        ADMIN_PASSWORD
+      const cred = await withTimeout(
+        signInWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD),
+        "Admin sign-in"
       );
       return cred.user;
     } catch (err) {
       if (err.code !== "auth/user-not-found") throw err;
 
       // Create the admin user if it doesn't exist yet
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        ADMIN_EMAIL,
-        ADMIN_PASSWORD
+      const cred = await withTimeout(
+        createUserWithEmailAndPassword(auth, ADMIN_EMAIL, ADMIN_PASSWORD),
+        "Admin sign-up"
       );
-      await updateProfile(cred.user, { displayName: "ENUF Admin" });
-      await setDoc(
-        doc(db, "users", cred.user.uid),
-        {
+      await withTimeout(
+        updateProfile(cred.user, { displayName: "ENUF Admin" }),
+        "Admin profile update"
+      );
+      await withTimeout(
+        setDoc(
+          doc(db, "users", cred.user.uid),
+          {
+            uid: cred.user.uid,
+            email: ADMIN_ALIAS,
+            fullName: "ENUF Admin",
+            username: "enuf",
+            createdAt: serverTimestamp(),
+          },
+          { merge: true }
+        ),
+        "Admin profile write"
+      );
+      await withTimeout(
+        setDoc(doc(db, "usernames", "enuf"), {
           uid: cred.user.uid,
           email: ADMIN_ALIAS,
-          fullName: "ENUF Admin",
-          username: "enuf",
-          createdAt: serverTimestamp(),
-        },
-        { merge: true }
+        }),
+        "Admin username write"
       );
-      await setDoc(doc(db, "usernames", "enuf"), {
-        uid: cred.user.uid,
-        email: ADMIN_ALIAS,
-      });
       return cred.user;
     }
   };
@@ -91,7 +110,10 @@ export default function Login({ user }) {
       }
 
       if (mode === "login") {
-        await signInWithEmailAndPassword(auth, cleanedEmail, password);
+        await withTimeout(
+          signInWithEmailAndPassword(auth, cleanedEmail, password),
+          "Login"
+        );
         resetForm();
         return;
       }
@@ -107,43 +129,55 @@ export default function Login({ user }) {
 
       // 1) Check if username is already taken
       const usernameRef = doc(db, "usernames", cleanUsername);
-      const existing = await getDoc(usernameRef);
+      const existing = await withTimeout(getDoc(usernameRef), "Username check");
       if (existing.exists()) {
         throw new Error("That username is already taken. Try another one.");
       }
 
       // 2) Create auth user
-      const cred = await createUserWithEmailAndPassword(
-        auth,
-        cleanEmail,
-        password
+      const cred = await withTimeout(
+        createUserWithEmailAndPassword(auth, cleanEmail, password),
+        "Sign-up"
       );
 
       // 3) Update auth profile displayName
-      await updateProfile(cred.user, {
-        displayName: cleanName,
-      });
+      await withTimeout(
+        updateProfile(cred.user, {
+          displayName: cleanName,
+        }),
+        "Profile update"
+      );
 
       // 4) Create Firestore user profile
       const userRef = doc(db, "users", cred.user.uid);
-      await setDoc(userRef, {
-        uid: cred.user.uid,
-        email: cleanEmail,
-        fullName: cleanName,
-        username: cleanUsername,
-        createdAt: serverTimestamp(),
-      });
+      await withTimeout(
+        setDoc(userRef, {
+          uid: cred.user.uid,
+          email: cleanEmail,
+          fullName: cleanName,
+          username: cleanUsername,
+          createdAt: serverTimestamp(),
+        }),
+        "Profile write"
+      );
 
       // 5) Reserve the username
-      await setDoc(usernameRef, {
-        uid: cred.user.uid,
-        email: cleanEmail,
-      });
+      await withTimeout(
+        setDoc(usernameRef, {
+          uid: cred.user.uid,
+          email: cleanEmail,
+        }),
+        "Username reserve"
+      );
 
       resetForm();
     } catch (err) {
       console.error(err);
-      setError(err.message || "Auth failed");
+      const msg =
+        err?.message?.includes("timed out")
+          ? "Login timed out. Check your connection and try again."
+          : err.message || "Auth failed";
+      setError(msg);
     } finally {
       setBusy(false);
     }
