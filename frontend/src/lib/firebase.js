@@ -4,7 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCnkriWGFR59fuswjYI3zwUsY65twNyKfU",
   authDomain: "enuf-26dda.firebaseapp.com",
   projectId: "enuf-26dda",
@@ -13,6 +13,8 @@ const firebaseConfig = {
   appId: "1:757285990176:web:7c4cab6cb67004b4f73145",
   measurementId: "G-9FXJSH6PNE",
 };
+
+export const firebaseApiKey = firebaseConfig.apiKey;
 
 const app = initializeApp(firebaseConfig);
 

@@ -1,6 +1,6 @@
 // frontend/src/components/Login.jsx
 import { useState } from "react";
-import { auth, db } from "../lib/firebase";
+import { auth, db, firebaseApiKey } from "../lib/firebase";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -18,6 +18,10 @@ const API_URL = import.meta.env?.VITE_API_URL || "";
 if (!API_URL && typeof console !== "undefined") {
   console.warn("VITE_API_URL is not set. Login will still use Firebase Auth.");
 }
+const FIREBASE_API_KEY = firebaseApiKey;
+if (!FIREBASE_API_KEY && typeof console !== "undefined") {
+  console.warn("Firebase API key is missing. REST auth fallback disabled.");
+}
 
 const withTimeout = (promise, label, ms = 15000) =>
   Promise.race([
@@ -26,6 +30,45 @@ const withTimeout = (promise, label, ms = 15000) =>
       setTimeout(() => reject(new Error(`${label} timed out`)), ms)
     ),
   ]);
+
+const fetchWithTimeout = (url, options = {}, ms = 15000) =>
+  Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Network request timed out")), ms)
+    ),
+  ]);
+
+const shouldFallbackToRest = (err) => {
+  if (!err) return false;
+  if (err?.message?.includes("timed out")) return true;
+  if (err?.code === "auth/network-request-failed") return true;
+  return false;
+};
+
+const signInWithPasswordRest = async (email, password) => {
+  if (!FIREBASE_API_KEY) {
+    throw new Error("Firebase API key missing.");
+  }
+  const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    },
+    15000
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg =
+      data?.error?.message?.replace(/_/g, " ").toLowerCase() ||
+      "Login failed";
+    throw new Error(msg);
+  }
+  return data;
+};
 
 async function setAuthPreference(user) {
   try {
@@ -143,14 +186,31 @@ export default function Login({ user, onAuthSuccess }) {
       }
 
       if (mode === "login") {
-        const cred = await withTimeout(
-          signInWithEmailAndPassword(auth, cleanedEmail, password),
-          "Login"
-        );
-        await setAuthPreference(cred.user);
-        if (onAuthSuccess) onAuthSuccess(cred.user);
-        resetForm();
-        return;
+        try {
+          const cred = await withTimeout(
+            signInWithEmailAndPassword(auth, cleanedEmail, password),
+            "Login"
+          );
+          await setAuthPreference(cred.user);
+          if (onAuthSuccess) onAuthSuccess(cred.user);
+          resetForm();
+          return;
+        } catch (err) {
+          if (shouldFallbackToRest(err)) {
+            const data = await signInWithPasswordRest(cleanedEmail, password);
+            const fallbackUser = {
+              uid: data.localId,
+              email: data.email,
+              displayName: data.displayName || "",
+              photoURL: "",
+            };
+            await setAuthPreference(fallbackUser);
+            if (onAuthSuccess) onAuthSuccess(fallbackUser);
+            resetForm();
+            return;
+          }
+          throw err;
+        }
       }
 
       // SIGN UP FLOW
