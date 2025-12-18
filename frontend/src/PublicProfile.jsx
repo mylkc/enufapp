@@ -76,6 +76,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
         onClose?.();
       }
     };
+    if (typeof window === "undefined") return () => {};
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [videos.length, onClose]);

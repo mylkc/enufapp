@@ -188,6 +188,7 @@ export default function Watch({ user, initialEmotion }) {
         setCurrentIndex((i) => Math.max(i - 1, 0));
       }
     };
+    if (typeof window === "undefined") return () => {};
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [videos.length]);

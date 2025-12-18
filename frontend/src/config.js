@@ -1,5 +1,7 @@
 // Central place to configure your media server URL.
-// For local development, leave as localhost:3001.
 // In production, set VITE_MEDIA_SERVER_URL in an .env file.
-export const MEDIA_SERVER_URL =
-  import.meta.env.VITE_MEDIA_SERVER_URL || "http://localhost:3001";
+const mediaEnv = import.meta.env?.VITE_MEDIA_SERVER_URL;
+export const MEDIA_SERVER_URL = mediaEnv || "";
+if (!mediaEnv && typeof console !== "undefined") {
+  console.warn("VITE_MEDIA_SERVER_URL is not set; MEDIA_SERVER_URL is empty.");
+}

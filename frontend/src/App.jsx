@@ -14,7 +14,7 @@ import MoodSelector from "./MoodSelector";
 import FriendsTab from "./FriendsTab";
 import SettingsPage from "./SettingsPage";
 import MeTab from "./MeTab"; // ✅ THE REAL ONE
-import { supabase } from "./lib/supabase";
+import { supabase, supabaseConfigured } from "./lib/supabase";
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -43,7 +43,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !supabaseConfigured) return;
     supabase
       .from("users")
       .upsert(
@@ -60,6 +60,14 @@ export default function App() {
       });
   }, [user?.uid]);
 
+  useEffect(() => {
+    if (!initializing) return;
+    const timeout = setTimeout(() => {
+      setInitializing(false);
+    }, 3000);
+    return () => clearTimeout(timeout);
+  }, [initializing]);
+
   // Handle mood completion
   const handleMoodComplete = async (mood) => {
     const moodFilter =
@@ -72,18 +80,24 @@ export default function App() {
     setWatchFilter(moodFilter);
     setActiveTab("watch");
 
-    if (user?.uid) {
-      const { error } = await supabase.from("moods").insert({
-        user_id: user.uid,
-        mood_level: mood.level ?? null,
-        mood_label: mood.label ?? null,
-        core_mood: mood.core ?? null,
-        sub_mood: mood.subMood ?? null,
-        reasons: Array.isArray(mood.reasons) ? mood.reasons.join(", ") : mood.reasons ?? null,
-        emotion_tag: mood.emotionTag ?? null,
-      });
-      if (error) {
-        console.error("Failed to save mood:", error);
+    if (user?.uid && supabaseConfigured) {
+      try {
+        const { error } = await supabase.from("moods").insert({
+          user_id: user.uid,
+          mood_level: mood.level ?? null,
+          mood_label: mood.label ?? null,
+          core_mood: mood.core ?? null,
+          sub_mood: mood.subMood ?? null,
+          reasons: Array.isArray(mood.reasons)
+            ? mood.reasons.join(", ")
+            : mood.reasons ?? null,
+          emotion_tag: mood.emotionTag ?? null,
+        });
+        if (error) {
+          console.error("Failed to save mood:", error);
+        }
+      } catch (err) {
+        console.error("Failed to save mood:", err);
       }
     }
   };

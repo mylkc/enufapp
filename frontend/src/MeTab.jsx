@@ -134,6 +134,7 @@ export default function MeTab({ user, setActiveTab }) {
   }
 
   async function deleteVideo(id) {
+    if (typeof window === "undefined") return;
     const ok = window.confirm("Delete this video...");
     if (!ok) return;
     try {
@@ -173,7 +174,9 @@ export default function MeTab({ user, setActiveTab }) {
       await signOut(auth);
     } catch (err) {
       console.error("Sign out failed", err);
-      window.alert("Sign out failed. Please try again.");
+      if (typeof window !== "undefined") {
+        window.alert("Sign out failed. Please try again.");
+      }
     }
   }
 
@@ -738,6 +741,7 @@ function VideoLightbox({ videos, startIndex, onClose }) {
         onClose();
       }
     };
+    if (typeof window === "undefined") return () => {};
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [videos.length, onClose]);

@@ -41,7 +41,8 @@ export default function Grow({ user }) {
   const [wins, setWins] = useState([]);
 
   useEffect(() => {
-    const raw = localStorage.getItem(storageKey);
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(storageKey);
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
@@ -56,6 +57,7 @@ export default function Grow({ user }) {
   }, [storageKey]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const payload = {
       journalText,
       journalPrompt,
@@ -63,7 +65,7 @@ export default function Grow({ user }) {
       reflectionAnswer,
       wins
     };
-    localStorage.setItem(storageKey, JSON.stringify(payload));
+    window.localStorage.setItem(storageKey, JSON.stringify(payload));
   }, [storageKey, journalText, journalPrompt, reflectionQuestion, reflectionAnswer, wins]);
 
   const addWin = () => {

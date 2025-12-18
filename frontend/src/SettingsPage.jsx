@@ -51,16 +51,20 @@ export default function SettingsPage({ user }) {
   useEffect(() => {
     async function loadProfile() {
       if (!user?.uid) return;
-
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (userDoc.exists()) {
-        setUsername(userDoc.data().username || "");
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setUsername(userDoc.data().username || "");
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
       }
     }
     loadProfile();
   }, [user]);
 
   useEffect(() => {
+    if (typeof document === "undefined" || typeof window === "undefined") return;
     const root = document.documentElement;
     if (theme === "system") {
       const media = window.matchMedia("(prefers-color-scheme: dark)");
@@ -75,7 +79,8 @@ export default function SettingsPage({ user }) {
   }, [theme]);
 
   useEffect(() => {
-    const raw = localStorage.getItem(settingsKey);
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(settingsKey);
     if (!raw) return;
     try {
       const data = JSON.parse(raw);
@@ -120,6 +125,7 @@ export default function SettingsPage({ user }) {
   }, [settingsKey]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const payload = {
       theme,
       accent,
@@ -150,7 +156,7 @@ export default function SettingsPage({ user }) {
       offlineIndicator,
       haptics
     };
-    localStorage.setItem(settingsKey, JSON.stringify(payload));
+    window.localStorage.setItem(settingsKey, JSON.stringify(payload));
   }, [
     settingsKey,
     theme,
@@ -318,7 +324,9 @@ export default function SettingsPage({ user }) {
             <button
               onClick={() => {
                 signOut(auth);
-                window.location.reload();
+                if (typeof window !== "undefined") {
+                  window.location.reload();
+                }
               }}
               className="px-4 py-2 rounded-full border border-red-500 text-red-600 text-sm"
             >
